@@ -1,0 +1,6 @@
+README.md
+gym_baxter_grabbing.egg-info/PKG-INFO
+gym_baxter_grabbing.egg-info/SOURCES.txt
+gym_baxter_grabbing.egg-info/dependency_links.txt
+gym_baxter_grabbing.egg-info/requires.txt
+gym_baxter_grabbing.egg-info/top_level.txt
