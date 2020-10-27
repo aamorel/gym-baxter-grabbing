@@ -199,6 +199,9 @@ class Baxter_grabbingEnv(gym.Env):
 
         # set up the world, endEffector is the tip of the left finger
         self.baxterId, self.endEffectorId, self.objectId = setUpWorld()
+        
+        # change friction  of object
+        p.changeDynamics(self.objectId, -1, lateralFriction=1)
 
         self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.baxterId,
                                                                                               includeFixed=False)
