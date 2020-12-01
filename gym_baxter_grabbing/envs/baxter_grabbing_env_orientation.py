@@ -219,7 +219,11 @@ class Baxter_grabbingEnvOrientation(gym.Env):
             p.getCameraImage(320, 200, renderer=p.ER_BULLET_HARDWARE_OPENGL)
             sleep(1.)
         
-        self.interp_grip = interp1d([-1, 1], [0, 0.020833], bounds_error=False, fill_value='extrapolate')
+        # not useful and way too slow
+        # self.interp_grip = interp1d([-1, 1], [0, 0.020833], bounds_error=False, fill_value='extrapolate')
+
+        # much simpler and faster (we want a linear function)
+        self.interp_grip = lambda a : (a + 1) * 0.010416
             
     def step(self, action):
         """Executes one step of the simulation
