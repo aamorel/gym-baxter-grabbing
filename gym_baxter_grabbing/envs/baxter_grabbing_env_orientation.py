@@ -208,6 +208,9 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         # change friction  of object
         p.changeDynamics(self.objectId, -1, lateralFriction=1)
 
+        # self.savefile = 'save_state.bullet'
+        self.savestate = p.saveState()
+
         self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.baxterId,
                                                                                               includeFixed=False)
         if self.display:
@@ -269,7 +272,7 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         return observation, reward, done, info
 
     def reset(self):
-        self.baxterId, self.endEffectorId, self.objectId = setUpWorld()
+        p.restoreState(self.savestate)
 
     def render(self, mode='human'):
         pass
