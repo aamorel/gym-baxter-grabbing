@@ -6,6 +6,7 @@ import pyquaternion as pyq
 from scipy.interpolate import interp1d
 
 MAX_FORCE = 100
+NB_STEPS_TO_ROLL = 10
 
 
 def setUpWorld(initialSimSteps=100):
@@ -243,7 +244,6 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         quat_orientation = pyq.Quaternion(target_orientation)
         quat_orientation = quat_orientation.normalised
         target_gripper = action[7]
-        p.stepSimulation()
 
         jointPoses = accurateIK(self.baxterId, self.endEffectorId, target_position, target_orientation,
                                 self.lowerLimits,
@@ -256,6 +256,10 @@ class Baxter_grabbingEnvOrientation(gym.Env):
                                 targetPosition=target_gripper_pos, force=MAX_FORCE)
         p.setJointMotorControl2(bodyIndex=self.baxterId, jointIndex=51, controlMode=p.POSITION_CONTROL,
                                 targetPosition=-target_gripper_pos, force=MAX_FORCE)
+        
+        # roll the world (IK and motor control doesn't have to be done every loop)
+        for _ in range(NB_STEPS_TO_ROLL):
+            p.stepSimulation()
 
         # get information on target object
         obj = p.getBasePositionAndOrientation(self.objectId)
