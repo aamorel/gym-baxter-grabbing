@@ -6,7 +6,6 @@ import pyquaternion as pyq
 from scipy.interpolate import interp1d
 
 MAX_FORCE = 100
-NB_STEPS_TO_ROLL = 10
 
 
 def setUpWorld(initialSimSteps=100):
@@ -225,6 +224,11 @@ class Baxter_grabbingEnvOrientation(gym.Env):
 
         # much simpler and faster (we want a linear function)
         self.interp_grip = lambda a : (a + 1) * 0.010416
+
+        self.steps_to_roll = 10
+    
+    def set_steps_to_roll(self, steps_to_roll):
+        self.steps_to_roll = steps_to_roll
             
     def step(self, action):
         """Executes one step of the simulation
@@ -258,7 +262,7 @@ class Baxter_grabbingEnvOrientation(gym.Env):
                                 targetPosition=-target_gripper_pos, force=MAX_FORCE)
         
         # roll the world (IK and motor control doesn't have to be done every loop)
-        for _ in range(NB_STEPS_TO_ROLL):
+        for _ in range(self.steps_to_roll):
             p.stepSimulation()
 
         # get information on target object
