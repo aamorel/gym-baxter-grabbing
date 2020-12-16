@@ -274,10 +274,9 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         # get information on gripper
         grip = p.getLinkState(self.baxterId, self.endEffectorId)
         grip_pos = list(grip[0])  # x, y, z
-        # grip_orientation = p.getEulerFromQuaternion(list(grip[1]))
         grip_orientation = list(grip[1])
 
-        observation = [obj_pos, obj_orientation, grip_pos, grip_orientation]
+        observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
         reward = None
         info = None
         done = False
