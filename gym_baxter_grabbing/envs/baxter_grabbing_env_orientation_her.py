@@ -4,9 +4,13 @@ import numpy as np
 import gym
 import pyquaternion as pyq
 from scipy.interpolate import interp1d
+import gym.spaces as spaces
+import utils
 
 MAX_FORCE = 100
-
+HEIGHT_THRESH = -0.08  # binary goal parameter
+DISTANCE_THRESH = 0.20  # binary goal parameter
+UPLIFT_THRESH = -0.11  # measure parameter
 
 def setUpWorld(initialSimSteps=100):
     """
@@ -23,8 +27,6 @@ def setUpWorld(initialSimSteps=100):
     obj_to_grab_id : int
     """
     p.resetSimulation()
-    p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
-
     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
 
     # load plane
@@ -194,9 +196,9 @@ def setMotors(bodyId, jointPoses):
                                     targetPosition=jointPoses[qIndex - 7], force=MAX_FORCE)
 
 
-class Baxter_grabbingEnvOrientation(gym.Env):
+class Baxter_grabbingEnvOrientationHer(gym.GoalEnv):
 
-    def __init__(self, display=False):
+    def __init__(self, display=False, steps_to_roll=10, episode_len=600, pause_frac=0.66, n_cells=1000):
 
         self.display = display
         if self.display:
@@ -210,27 +212,47 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         # change friction  of object
         p.changeDynamics(self.objectId, -1, lateralFriction=1)
 
-        # self.savefile = 'save_state.bullet'
+        # save the state of the environment for future reset (save time on URDF loading)
         self.savestate = p.saveState()
 
+        # get joint ranges
         self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.baxterId,
-                                                                                              includeFixed=False)
+                                                                                   includeFixed=False)
+        # deal with display
         if self.display:
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
             p.resetDebugVisualizerCamera(2., 180, 0., [0.52, 0.2, np.pi / 4.])
             p.getCameraImage(320, 200, renderer=p.ER_BULLET_HARDWARE_OPENGL)
             sleep(1.)
-        
-        # not useful and way too slow
-        # self.interp_grip = interp1d([-1, 1], [0, 0.020833], bounds_error=False, fill_value='extrapolate')
 
-        # much simpler and faster (we want a linear function)
-        self.interp_grip = lambda a : (a + 1) * 0.010416
-
-        self.steps_to_roll = 10
-    
-    def set_steps_to_roll(self, steps_to_roll):
+        # number of pybullet steps to roll at each gym step
         self.steps_to_roll = steps_to_roll
+
+        # number of gym steps to roll before the end of the movement
+        self.move_len = int(episode_len * pause_frac)
+
+        # number of pybullet steps to roll after the movement keeping the same action
+        self.pause_steps = (episode_len - self.episode_len) * steps_to_roll
+
+        # counts the number of gym steps
+        self.step_counter = 0
+
+        # variable to store grasping orientation
+        self.diff_or_at_grab = None
+
+        # create the discretisation for the goal spaces (quaternion spaces)
+        bounds = [[-1, 1], [-1, 1], [-1, 1], [-1, 1]]
+        self.cvt = utils.CVT(n_cells, bounds)
+
+        self.grasped = False
+
+        # observation and action space
+        self.observation_space = spaces.Dict({'observation': spaces.Box(-1, 1, shape=(34,)),
+                                             'desired_goal': spaces.Discrete(n_cells),
+                                             'achieved_goal': spaces.Discrete(n_cells)})
+        self.action_space = spaces.Box(-1, 1, shape=(8,))
+
+    
             
     def step(self, action):
         """Executes one step of the simulation
@@ -245,11 +267,15 @@ class Baxter_grabbingEnvOrientation(gym.Env):
             bool: done
             dict: info
         """
+        self.step_counter += 1
+        # if done, we are doing the last step of the episode
+        done = self.step_counter >= self.episode_len
+
         target_position = action[0:3]
         target_orientation = action[3:7]
         quat_orientation = pyq.Quaternion(target_orientation)
         quat_orientation = quat_orientation.normalised
-        target_gripper = action[7]
+        target_gripper_pos = action[7]
 
         jointPoses = accurateIK(self.baxterId, self.endEffectorId, target_position, target_orientation,
                                 self.lowerLimits,
@@ -257,7 +283,6 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         setMotors(self.baxterId, jointPoses)
 
         # explicitly control the gripper
-        target_gripper_pos = float(self.interp_grip(target_gripper))
         p.setJointMotorControl2(bodyIndex=self.baxterId, jointIndex=49, controlMode=p.POSITION_CONTROL,
                                 targetPosition=target_gripper_pos, force=MAX_FORCE)
         p.setJointMotorControl2(bodyIndex=self.baxterId, jointIndex=51, controlMode=p.POSITION_CONTROL,
@@ -266,6 +291,11 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         # roll the world (IK and motor control doesn't have to be done every loop)
         for _ in range(self.steps_to_roll):
             p.stepSimulation()
+        
+        # if done, it is the end of the movement, so we keep the action and make the pause
+        if done: 
+            for _ in range(self.pause_steps):
+                p.stepSimulation()
 
         # get information on target object
         obj = p.getBasePositionAndOrientation(self.objectId)
@@ -278,14 +308,42 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         grip_pos = list(grip[0])  # x, y, z
         grip_orientation = list(grip[1])
 
-        observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
+        # verify if grasping occured
+        if (obj_pos[2] >= UPLIFT_THRESH) and (self.grasped == False):
+            # first step of grasp
+            # pybullet is x, y, z, w whereas pyquaternion is w, x, y, z
+            obj_or = pyq.Quaternion(obj_orientation[3], obj_orientation[0], obj_orientation[1], obj_orientation[2])
+            grip_or = pyq.Quaternion(grip_orientation[3], grip_orientation[0], grip_orientation[1], grip_orientation[2])
+
+            # difference:
+            self.diff_or_at_grab = obj_or.conjugate * grip_or
+            self.grasped = True
+        
+        # if last step of episode
+        if done: 
+            dist = utils.list_l2_norm(obj_pos, grip_pos)
+            if obj_pos[2] > HEIGHT_THRESH and dist < DISTANCE_THRESH:
+                # TODO: determine which goal was achieved
+                pass
+            else: 
+                # TODO: set the achieved goal to dump goal
+                pass
+        obs = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
+        observation = {}
+        ob = np.array(obs[0] + obs[1] + obs[2] + obs[3] 
+                               + list(obs[4]) + [self.step_counter / self.pause_time])
+        observation['observation'] = ob
+
+
         reward = None
         info = None
-        done = False
         return observation, reward, done, info
 
     def reset(self):
         p.restoreState(self.savestate)
+        self.step_counter = 0
+        self.grasped = False
+        self.diff_or_at_grab = None
 
     def render(self, mode='human'):
         pass

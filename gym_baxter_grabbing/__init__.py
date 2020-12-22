@@ -5,3 +5,6 @@ register(id='baxter_grabbing-v0',
 
 register(id='baxter_grabbing-v1',
          entry_point='gym_baxter_grabbing.envs:Baxter_grabbingEnvOrientation',)
+
+register(id='baxter_grabbing-v2',
+         entry_point='gym_baxter_grabbing.envs:Baxter_grabbingEnvOrientationHer',)
