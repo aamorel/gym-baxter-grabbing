@@ -279,8 +279,11 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         grip_orientation = list(grip[1])
 
         observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
+
+        contact_points = p.getContactPoints(bodyA=self.baxterId, bodyB=self.objectId, linkIndexA=self.endEffectorId)
         reward = None
-        info = None
+        info = {}
+        info['contact_points'] = contact_points
         done = False
         return observation, reward, done, info
 
