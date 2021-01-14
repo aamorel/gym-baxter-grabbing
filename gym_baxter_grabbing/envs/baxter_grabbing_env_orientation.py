@@ -280,7 +280,7 @@ class Baxter_grabbingEnvOrientation(gym.Env):
 
         observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
 
-        contact_points = p.getContactPoints(bodyA=self.baxterId, bodyB=self.objectId, linkIndexA=47)
+        contact_points = p.getContactPoints(bodyA=self.baxterId, bodyB=self.objectId)
         reward = None
         info = {}
         info['contact_points'] = contact_points
