@@ -96,6 +96,9 @@ def setUpWorld(initialSimSteps=100):
     # set gravity
     p.setGravity(0., 0., -9.81)
 
+    # change friction  of object
+    p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
+
     # let the world run for a bit
     for _ in range(initialSimSteps):
         p.stepSimulation()
@@ -206,9 +209,6 @@ class Baxter_grabbingEnvOrientation(gym.Env):
 
         # set up the world, endEffector is the tip of the left finger
         self.baxterId, self.endEffectorId, self.objectId = setUpWorld()
-
-        # change friction  of object
-        p.changeDynamics(self.objectId, -1, lateralFriction=1)
 
         # self.savefile = 'save_state.bullet'
         self.savestate = p.saveState()
