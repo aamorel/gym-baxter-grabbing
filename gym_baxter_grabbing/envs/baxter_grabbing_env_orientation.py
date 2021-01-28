@@ -2,13 +2,15 @@ from time import sleep
 import pybullet as p
 import numpy as np
 import gym
+import os
+from pathlib import Path
 import pyquaternion as pyq
 from scipy.interpolate import interp1d
 
 MAX_FORCE = 100
 
 
-def setUpWorld(initialSimSteps=100):
+def setUpWorld(obj='cube', initialSimSteps=100):
     """
     Reset the simulation to the beginning and reload all models.
 
@@ -83,12 +85,17 @@ def setUpWorld(initialSimSteps=100):
                       linkJointAxis=axis)
                        
     # create object to grab
-    square_base = 0.02
-    height = 0.08
-    col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
-    viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
-    obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-    p.resetBasePositionAndOrientation(obj_to_grab_id, [0, 0.2, 0.73], [0, 0, 0, 1])
+    if obj == 'cube':
+        square_base = 0.02
+        height = 0.08
+        col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
+        viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
+        obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+        p.resetBasePositionAndOrientation(obj_to_grab_id, [0, 0.2, 0.73], [0, 0, 0, 1])
+    if obj == 'cup':
+        path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
+        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+        obj_to_grab_id = p.loadURDF(path, [0, 0.2, 0.62], cubeStartOrientation)
 
     # grab relevant joint IDs
     endEffectorId = 48  # (left gripper left finger)
@@ -199,16 +206,17 @@ def setMotors(bodyId, jointPoses):
 
 class Baxter_grabbingEnvOrientation(gym.Env):
 
-    def __init__(self, display=False):
+    def __init__(self, display=False, obj='cube'):
 
         self.display = display
         if self.display:
             p.connect(p.GUI)
         else:
             p.connect(p.DIRECT)
+        self.obj = obj
 
         # set up the world, endEffector is the tip of the left finger
-        self.baxterId, self.endEffectorId, self.objectId = setUpWorld()
+        self.baxterId, self.endEffectorId, self.objectId = setUpWorld(obj=self.obj)
 
         # self.savefile = 'save_state.bullet'
         self.savestate = p.saveState()
@@ -220,9 +228,6 @@ class Baxter_grabbingEnvOrientation(gym.Env):
             p.resetDebugVisualizerCamera(2., 180, 0., [0.52, 0.2, np.pi / 4.])
             p.getCameraImage(320, 200, renderer=p.ER_BULLET_HARDWARE_OPENGL)
             sleep(1.)
-        
-        # not useful and way too slow
-        # self.interp_grip = interp1d([-1, 1], [0, 0.020833], bounds_error=False, fill_value='extrapolate')
 
         # much simpler and faster (we want a linear function)
         self.interp_grip = lambda a : (a + 1) * 0.010416
