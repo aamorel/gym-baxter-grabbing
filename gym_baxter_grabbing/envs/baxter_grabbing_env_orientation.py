@@ -83,19 +83,6 @@ def setUpWorld(obj='cube', initialSimSteps=100):
                       linkParentIndices=indices,
                       linkJointTypes=jointTypes,
                       linkJointAxis=axis)
-                       
-    # create object to grab
-    if obj == 'cube':
-        square_base = 0.02
-        height = 0.08
-        col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
-        viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
-        obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        p.resetBasePositionAndOrientation(obj_to_grab_id, [0, 0.2, 0.73], [0, 0, 0, 1])
-    if obj == 'cup':
-        path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
-        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-        obj_to_grab_id = p.loadURDF(path, [0, 0.2, 0.62], cubeStartOrientation)
 
     # grab relevant joint IDs
     endEffectorId = 48  # (left gripper left finger)
@@ -103,12 +90,25 @@ def setUpWorld(obj='cube', initialSimSteps=100):
     # set gravity
     p.setGravity(0., 0., -9.81)
 
-    # change friction  of object
-    p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
-
     # let the world run for a bit
     for _ in range(initialSimSteps):
         p.stepSimulation()
+
+    # create object to grab
+    if obj == 'cube':
+        square_base = 0.02
+        height = 0.08
+        col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
+        viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
+        obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+        p.resetBasePositionAndOrientation(obj_to_grab_id, [0, 0.2, -0.05], [0, 0, 0, 1])
+    if obj == 'cup':
+        path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
+        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+        obj_to_grab_id = p.loadURDF(path, [0, 0.2, -0.05], cubeStartOrientation)
+    
+    # change friction  of object
+    p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
 
     return baxterId, endEffectorId, obj_to_grab_id
 

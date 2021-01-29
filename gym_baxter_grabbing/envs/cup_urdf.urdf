@@ -6,7 +6,7 @@
     <link name="base_link">
         <visual>
             <geometry>
-                <mesh filename="tea_cup.obj" scale="0.02 0.02 0.02"/>
+                <mesh filename="mug-9.obj" scale="0.005 0.005 0.005"/>
             </geometry>
             <origin rpy="1.57 0 0" xyz="0 0 0" />
             <material name="white"/>
@@ -14,13 +14,13 @@
 
         <collision>
             <geometry>
-                <mesh filename="tea_cup.obj" scale="0.02 0.02 0.02"/>
+                <mesh filename="mug-9.obj" scale="0.005 0.005 0.005"/>
             </geometry>
             <origin rpy="1.57 0 0" xyz="0 0 0" />
         </collision>
         <inertial>
-            <mass value="0.00000000001"/>
-            <inertia ixx="0.000000000001" ixy="0.0" ixz="0.0" iyy="0.0000000000001" iyz="0.0" izz="0.000000000001"/>
+            <mass value="1"/>
+            <inertia ixx="0.000000000000001" ixy="0.0" ixz="0.0" iyy="0.000000000000001" iyz="0.0" izz="0.000000000000001"/>
         </inertial>
     </link>
 </robot>
