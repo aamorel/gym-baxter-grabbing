@@ -31,8 +31,9 @@ def setUpWorld(physics_client, obj='cube', initialSimSteps=100):
 
     pepper = q.PepperVirtual()
 
-    pepper.loadRobot(translation=[0, 0, 0],
-                     quaternion=[0, 0, 0, 1],
+    rob_or = p.getQuaternionFromEuler([0, 0, 1.57])
+    pepper.loadRobot(translation=[0.2, -0.38, -0.8],
+                     quaternion=rob_or,
                      physicsClientId=physics_client)  # experimentation
 
     pepper_id = pepper.getRobotModel()
@@ -92,16 +93,16 @@ def setUpWorld(physics_client, obj='cube', initialSimSteps=100):
 
     # create object to grab
     if obj == 'cube':
-        square_base = 0.02
-        height = 0.08
+        square_base = 0.015
+        height = 0.06
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        p.resetBasePositionAndOrientation(obj_to_grab_id, [0, 0.2, -0.05], [0, 0, 0, 1])
+        p.resetBasePositionAndOrientation(obj_to_grab_id, [0, -0.1, -0.05], [0, 0, 0, 1])
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
         cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-        obj_to_grab_id = p.loadURDF(path, [0, 0.2, -0.05], cubeStartOrientation)
+        obj_to_grab_id = p.loadURDF(path, [0, -0.1, -0.05], cubeStartOrientation)
     
     # change friction  of object
     p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
@@ -169,7 +170,7 @@ class PepperGrasping(gym.Env):
 
         self.steps_to_roll = 10
 
-        self.joints = ['HipPitch', 'HipRoll',
+        self.joints = ['HipRoll',
                        'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll',
                        'LWristYaw', 'LFinger21', 'LFinger22', 'LFinger23',
                        'LFinger11', 'LFinger12', 'LFinger13', 'LFinger41', 'LFinger42',

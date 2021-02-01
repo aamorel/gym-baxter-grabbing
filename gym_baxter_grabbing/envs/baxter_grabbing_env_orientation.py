@@ -104,7 +104,7 @@ def setUpWorld(obj='cube', initialSimSteps=100):
         p.resetBasePositionAndOrientation(obj_to_grab_id, [0, 0.2, -0.05], [0, 0, 0, 1])
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
-        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         obj_to_grab_id = p.loadURDF(path, [0, 0.2, -0.05], cubeStartOrientation)
     
     # change friction  of object
