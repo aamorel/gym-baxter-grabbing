@@ -8,3 +8,6 @@ register(id='baxter_grabbing-v1',
 
 register(id='baxter_grabbing-v2',
          entry_point='gym_baxter_grabbing.envs:Baxter_grabbingEnvOrientationHer',)
+
+register(id='pepper_grasping-v0',
+         entry_point='gym_baxter_grabbing.envs:PepperGrasping',)
