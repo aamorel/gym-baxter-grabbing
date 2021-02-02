@@ -101,7 +101,7 @@ def setUpWorld(physics_client, obj='cube', initialSimSteps=100):
         p.resetBasePositionAndOrientation(obj_to_grab_id, [0, -0.1, -0.05], [0, 0, 0, 1])
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
-        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         obj_to_grab_id = p.loadURDF(path, [0, -0.1, -0.05], cubeStartOrientation)
     
     # change friction  of object
@@ -170,15 +170,19 @@ class PepperGrasping(gym.Env):
 
         self.steps_to_roll = 10
 
+        # self.joints = ['HipRoll',
+        #                'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll',
+        #                'LWristYaw', 'LFinger21', 'LFinger22', 'LFinger23',
+        #                'LFinger11', 'LFinger12', 'LFinger13', 'LFinger41', 'LFinger42',
+        #                'LFinger43', 'LFinger31', 'LFinger32', 'LFinger33', 'LThumb1', 'LThumb2']
+
         self.joints = ['HipRoll',
                        'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll',
-                       'LWristYaw', 'LFinger21', 'LFinger22', 'LFinger23',
-                       'LFinger11', 'LFinger12', 'LFinger13', 'LFinger41', 'LFinger42',
-                       'LFinger43', 'LFinger31', 'LFinger32', 'LFinger33', 'LThumb1', 'LThumb2']
+                       'LWristYaw', 'LHand']
         all_joints = self.pepper.joint_dict
         interesting_joints_idx = [all_joints[joint].getIndex() for joint in self.joints]
 
-        self.endEffectorId = interesting_joints_idx[self.joints.index('LThumb1')]
+        self.endEffectorId = all_joints['LHand'].getIndex()
         self.joint_ranges = getJointRanges(self.robot_id, interesting_joints_idx)
         self.n_joints = len(self.joints)
         self.speeds = [1] * self.n_joints
