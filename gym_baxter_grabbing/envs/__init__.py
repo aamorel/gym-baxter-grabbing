@@ -2,4 +2,6 @@ from gym_baxter_grabbing.envs.baxter_grabbing_env import Baxter_grabbingEnv
 from gym_baxter_grabbing.envs.baxter_grabbing_env_orientation import Baxter_grabbingEnvOrientation
 from gym_baxter_grabbing.envs.baxter_grabbing_env_orientation_her import Baxter_grabbingEnvOrientationHer
 from gym_baxter_grabbing.envs.pepper_grasping import PepperGrasping
+from gym_baxter_grabbing.envs.kuka_grasping import KukaGrasping
+
 
