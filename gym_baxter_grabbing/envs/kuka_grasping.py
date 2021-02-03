@@ -34,7 +34,7 @@ def setUpWorld(physics_client, obj='cube', initialSimSteps=100):
     objects = p.loadSDF(os.path.join(pybullet_data.getDataPath(),"kuka_iiwa/kuka_with_gripper2.sdf"))
     kuka_id = objects[0]
 
-    p.resetBasePositionAndOrientation(kuka_id, [0.1, -0.5, -0.5], [0., 0., 0., 1.])
+    p.resetBasePositionAndOrientation(kuka_id, [-0.1, -0.5, -0.5], [0., 0., 0., 1.])
 
     # table robot part shapes
     t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1])
