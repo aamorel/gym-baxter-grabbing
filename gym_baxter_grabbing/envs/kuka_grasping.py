@@ -91,7 +91,7 @@ def setUpWorld(physics_client, obj='cube', initialSimSteps=100):
 
     # create object to grab
     if obj == 'cube':
-        square_base = 0.3
+        square_base = 0.03
         height = 0.08
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
