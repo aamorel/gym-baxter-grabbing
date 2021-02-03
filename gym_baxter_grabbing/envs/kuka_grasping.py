@@ -230,8 +230,6 @@ class KukaGrasping(gym.Env):
         self.joint_ranges[0, 11] = -0.1
         self.joint_ranges[1, 11] = 0.3
 
-        print(self.joint_ranges)
-
         self.n_joints = len(self.joint_ranges[0])
 
         self.joints_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13]
