@@ -3,6 +3,7 @@ import pybullet as p
 import numpy as np
 import gym
 import os
+import random
 from pathlib import Path
 import pyquaternion as pyq
 from scipy.interpolate import interp1d
@@ -10,7 +11,7 @@ from scipy.interpolate import interp1d
 MAX_FORCE = 100
 
 
-def setUpWorld(obj='cube', initialSimSteps=100):
+def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
     """
     Reset the simulation to the beginning and reload all models.
 
@@ -101,11 +102,19 @@ def setUpWorld(obj='cube', initialSimSteps=100):
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        p.resetBasePositionAndOrientation(obj_to_grab_id, [0, 0.2, -0.05], [0, 0, 0, 1])
+        pos = [0, 0.2, -0.05]
+        if random_obj:
+            pos[0] = pos[0] + random.gauss(0, 0.01)
+            pos[1] = pos[1] + random.gauss(0, 0.01)
+        p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
         cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        obj_to_grab_id = p.loadURDF(path, [0, 0.14, -0.05], cubeStartOrientation, globalScaling=2)
+        pos = [0, 0.14, -0.05]
+        if random_obj:
+            pos[0] = pos[0] + random.gauss(0, 0.01)
+            pos[1] = pos[1] + random.gauss(0, 0.01)
+        obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=2)
     
     # change friction  of object
     p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
@@ -204,9 +213,9 @@ def setMotors(bodyId, jointPoses):
                                     targetPosition=jointPoses[qIndex - 7], force=MAX_FORCE)
 
 
-class Baxter_grabbingEnvOrientation(gym.Env):
+class BaxterGrasping(gym.Env):
 
-    def __init__(self, display=False, obj='cube'):
+    def __init__(self, display=False, obj='cube', random_obj=False):
 
         self.display = display
         if self.display:
@@ -216,7 +225,7 @@ class Baxter_grabbingEnvOrientation(gym.Env):
         self.obj = obj
 
         # set up the world, endEffector is the tip of the left finger
-        self.baxterId, self.endEffectorId, self.objectId = setUpWorld(obj=self.obj)
+        self.baxterId, self.endEffectorId, self.objectId = setUpWorld(obj=self.obj, random_obj=random_obj)
 
         # self.savefile = 'save_state.bullet'
         self.savestate = p.saveState()

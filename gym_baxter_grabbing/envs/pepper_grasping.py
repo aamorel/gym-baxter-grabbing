@@ -4,10 +4,11 @@ import qibullet as q
 import numpy as np
 import gym
 import os
+import random
 from pathlib import Path
 
 
-def setUpWorld(physics_client, obj='cube', initialSimSteps=100):
+def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100):
     """
     Reset the simulation to the beginning and reload all models.
 
@@ -98,11 +99,19 @@ def setUpWorld(physics_client, obj='cube', initialSimSteps=100):
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        p.resetBasePositionAndOrientation(obj_to_grab_id, [0, -0.1, -0.05], [0, 0, 0, 1])
+        pos = [0, -0.1, -0.05]
+        if random_obj:
+            pos[0] = pos[0] + random.gauss(0, 0.01)
+            pos[1] = pos[1] + random.gauss(0, 0.01)
+        p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
         cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        obj_to_grab_id = p.loadURDF(path, [0, -0.1, -0.05], cubeStartOrientation)
+        pos = [0, -0.1, -0.05]
+        if random_obj:
+            pos[0] = pos[0] + random.gauss(0, 0.01)
+            pos[1] = pos[1] + random.gauss(0, 0.01)
+        obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
     
     # change friction  of object
     p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
@@ -147,7 +156,7 @@ def getJointRanges(bodyId, joints_id):
 
 class PepperGrasping(gym.Env):
 
-    def __init__(self, display=False, obj='cube'):
+    def __init__(self, display=False, obj='cube', random_obj=False):
 
         self.display = display
         if self.display:
@@ -157,7 +166,7 @@ class PepperGrasping(gym.Env):
         self.obj = obj
 
         # set up the world, endEffector is the tip of the left finger
-        self.robot_id, self.objectId, self.pepper = setUpWorld(physics_client, obj=self.obj)
+        self.robot_id, self.objectId, self.pepper = setUpWorld(physics_client, obj=self.obj, random_obj=random_obj)
 
         # self.savefile = 'save_state.bullet'
         self.savestate = p.saveState()
