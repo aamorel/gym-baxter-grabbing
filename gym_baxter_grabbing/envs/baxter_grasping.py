@@ -210,7 +210,7 @@ def setMotors(bodyId, jointPoses):
         qIndex = jointInfo[3]
         if qIndex > -1:
             p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=i, controlMode=p.POSITION_CONTROL,
-                                    targetPosition=jointPoses[qIndex - 7], force=MAX_FORCE)
+                                    targetPosition=jointPoses[qIndex - 7], force=MAX_FORCE, maxVelocity=0.5)
 
 
 class BaxterGrasping(gym.Env):
