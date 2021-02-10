@@ -97,7 +97,7 @@ def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        pos = [0, -0.1, -0.05]
+        pos = [0, 0.1, -0.05]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
@@ -105,7 +105,7 @@ def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
         cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        pos = [0, -0.1, -0.05]
+        pos = [0, 0.1, -0.05]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
@@ -128,7 +128,7 @@ def setMotors(bodyId, joint_ids, jointPoses):
         jointInfo = p.getJointInfo(bodyId, i)
 
         p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=id, controlMode=p.POSITION_CONTROL,
-                                    targetPosition=jointPoses[i], force=MAX_FORCE)
+                                    targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=1)
 
 def getJointStates(bodyId, includeFixed=False):
     """
