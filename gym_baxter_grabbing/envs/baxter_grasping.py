@@ -7,6 +7,7 @@ import random
 from pathlib import Path
 import pyquaternion as pyq
 from scipy.interpolate import interp1d
+import json
 
 MAX_FORCE = 100
 
@@ -34,10 +35,16 @@ def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
     p.loadURDF("plane.urdf", [0, 0, -1], useFixedBase=True)
 
     # load Baxter
-    # urdf_flags = p.URDF_USE_SELF_COLLISION    makes the simulation go crazys
-    baxterId = p.loadURDF("baxter_common/baxter_description/urdf/toms_baxter.urdf", useFixedBase=True)
-
+    urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
+    baxterId = p.loadURDF("baxter_common/baxter_description/urdf/toms_baxter.urdf", useFixedBase=False, flags=urdf_flags)
     p.resetBasePositionAndOrientation(baxterId, [0, -0.8, 0.0], [0., 0., -1., -1.])
+
+    path = os.path.join(Path(__file__).parent, "contact_points_baxter.txt")
+    with open(path) as json_file:
+        data = json.load(json_file)
+
+    for contact_point in data:
+        p.setCollisionFilterPair(baxterId, baxterId, contact_point[0], contact_point[1], 0)
 
     # table robot part shapes
     t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1])
@@ -295,9 +302,12 @@ class BaxterGrasping(gym.Env):
         observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
 
         contact_points = p.getContactPoints(bodyA=self.baxterId, bodyB=self.objectId)
+        self_contact_points = p.getContactPoints(bodyA=self.baxterId, bodyB=self.baxterId)
+
         reward = None
         info = {}
         info['contact_points'] = contact_points
+        info['self contact_points'] = self_contact_points
         done = False
         return observation, reward, done, info
 
