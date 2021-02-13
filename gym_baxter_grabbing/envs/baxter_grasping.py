@@ -47,11 +47,11 @@ def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
         p.setCollisionFilterPair(baxterId, baxterId, contact_point[0], contact_point[1], 0)
 
     # table robot part shapes
-    t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1])
-    t_body_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1], rgbaColor=[0.3, 0.3, 0, 1])
+    t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.025])
+    t_body_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.025], rgbaColor=[0.3, 0.3, 0, 1])
 
-    t_legs = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.4])
-    t_legs_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.4], rgbaColor=[0.3, 0.3, 0, 1])
+    t_legs = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.35])
+    t_legs_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.35], rgbaColor=[0.3, 0.3, 0, 1])
 
     body_Mass = 500
     visualShapeId = t_body_v
@@ -63,7 +63,7 @@ def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
     linkVisualShapeIndices = [t_legs_v] * nlnk
     # link positions wrt the link they are attached to
 
-    linkPositions = [[0.35, 0.35, -0.3], [-0.35, 0.35, -0.3], [0.35, -0.35, -0.3], [-0.35, -0.35, -0.3]]
+    linkPositions = [[0.35, 0.35, -0.375], [-0.35, 0.35, -0.375], [0.35, -0.35, -0.375], [-0.35, -0.35, -0.375]]
 
     linkOrientations = [[0, 0, 0, 1]] * nlnk
     linkInertialFramePositions = [[0, 0, 0]] * nlnk
@@ -104,12 +104,13 @@ def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
 
     # create object to grab
     if obj == 'cube':
-        square_base = 0.02
-        height = 0.08
-        col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
-        viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, 0.1], rgbaColor=[1, 0, 0, 1])
+        w = 0.023
+        l = 0.05
+        height = 0.108
+        col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[l, w, height])
+        viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[l, w, height], rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        pos = [0, 0.2, -0.05]
+        pos = [0, 0.1, -0.05]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
