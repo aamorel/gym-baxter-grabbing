@@ -123,7 +123,7 @@ def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
         obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=2)
-    
+
     # change friction  of object
     p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
 
@@ -146,14 +146,13 @@ def getJointRanges(bodyId, includeFixed=False):
     """
 
     lowerLimits, upperLimits, jointRanges, restPoses = [], [], [], []
-
     numJoints = p.getNumJoints(bodyId)
     # loop through all joints
     for i in range(numJoints):
         jointInfo = p.getJointInfo(bodyId, i)
-        # print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
         if includeFixed or jointInfo[3] > -1:
             # jointInfo[3] > -1 means that the joint is not fixed
+            print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
             ll, ul = jointInfo[8:10]
             jr = ul - ll
 
@@ -220,10 +219,51 @@ def setMotors(bodyId, jointPoses):
             p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=i, controlMode=p.POSITION_CONTROL,
                                     targetPosition=jointPoses[qIndex - 7], force=MAX_FORCE, maxVelocity=0.5)
 
+def setMotorsIds(bodyId, joint_ids, jointPoses):
+    """
+    Parameters
+    ----------
+    bodyId : int
+    jointPoses : [float] * numDofs
+    """
+
+    for i, id in enumerate(joint_ids):
+        jointInfo = p.getJointInfo(bodyId, i)
+
+        p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=id, controlMode=p.POSITION_CONTROL,
+                                    targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=0.5)
+
+def getJointStates(bodyId, includeFixed=False):
+    """
+    Parameters
+    ----------
+    bodyId : int
+    includeFixed : bool
+
+    Returns
+    -------
+    lowerLimits : [ float ] * numDofs
+
+    """
+
+    states = []
+
+    numJoints = p.getNumJoints(bodyId)
+    # loop through all joints
+    for i in range(numJoints):
+        jointInfo = p.getJointInfo(bodyId, i)
+        # print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
+        if includeFixed or jointInfo[3] > -1:
+            # jointInfo[3] > -1 means that the joint is not fixed
+            joint_state = p.getJointState(bodyId, i)
+            states.append(joint_state)
+
+    return states
+
 
 class BaxterGrasping(gym.Env):
 
-    def __init__(self, display=False, obj='cube', random_obj=False):
+    def __init__(self, display=False, obj='cube', random_obj=False, mode='joints_space'):
 
         self.display = display
         if self.display:
@@ -231,6 +271,7 @@ class BaxterGrasping(gym.Env):
         else:
             p.connect(p.DIRECT)
         self.obj = obj
+        self.mode = mode
 
         # set up the world, endEffector is the tip of the left finger
         self.baxterId, self.endEffectorId, self.objectId = setUpWorld(obj=self.obj, random_obj=random_obj)
@@ -240,6 +281,7 @@ class BaxterGrasping(gym.Env):
 
         self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.baxterId,
                                                                                               includeFixed=False)
+
         if self.display:
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
             p.resetDebugVisualizerCamera(2., 180, 0., [0.52, 0.2, np.pi / 4.])
@@ -250,10 +292,15 @@ class BaxterGrasping(gym.Env):
         self.interp_grip = lambda a : (a + 1) * 0.010416
 
         self.steps_to_roll = 10
-    
+
+        if mode == 'joints_space':
+            self.joints_id = [34, 35, 36, 37, 38, 40, 41, 49, 51]
+            self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]
+            self.n_joints = len(self.joints_id)
+
     def set_steps_to_roll(self, steps_to_roll):
         self.steps_to_roll = steps_to_roll
-            
+
     def step(self, action):
         """Executes one step of the simulation
 
@@ -267,24 +314,50 @@ class BaxterGrasping(gym.Env):
             bool: done
             dict: info
         """
-        target_position = action[0:3]
-        target_orientation = action[3:7]
-        quat_orientation = pyq.Quaternion(target_orientation)
-        quat_orientation = quat_orientation.normalised
-        target_gripper = action[7]
+        if self.mode == 'end_effector_space':
+            target_position = action[0:3]
+            target_orientation = action[3:7]
+            quat_orientation = pyq.Quaternion(target_orientation)
+            quat_orientation = quat_orientation.normalised
+            target_gripper = action[7]
 
-        jointPoses = accurateIK(self.baxterId, self.endEffectorId, target_position, target_orientation,
-                                self.lowerLimits,
-                                self.upperLimits, self.jointRanges, self.restPoses, useNullSpace=True)
-        setMotors(self.baxterId, jointPoses)
+            jointPoses = accurateIK(self.baxterId, self.endEffectorId, target_position, target_orientation,
+                                    self.lowerLimits,
+                                    self.upperLimits, self.jointRanges, self.restPoses, useNullSpace=True)
+            setMotors(self.baxterId, jointPoses)
 
-        # explicitly control the gripper
-        target_gripper_pos = float(self.interp_grip(target_gripper))
-        p.setJointMotorControl2(bodyIndex=self.baxterId, jointIndex=49, controlMode=p.POSITION_CONTROL,
-                                targetPosition=target_gripper_pos, force=MAX_FORCE)
-        p.setJointMotorControl2(bodyIndex=self.baxterId, jointIndex=51, controlMode=p.POSITION_CONTROL,
-                                targetPosition=-target_gripper_pos, force=MAX_FORCE)
-        
+            # explicitly control the gripper
+            target_gripper_pos = float(self.interp_grip(target_gripper))
+            p.setJointMotorControl2(bodyIndex=self.baxterId, jointIndex=49, controlMode=p.POSITION_CONTROL,
+                                    targetPosition=target_gripper_pos, force=MAX_FORCE)
+            p.setJointMotorControl2(bodyIndex=self.baxterId, jointIndex=51, controlMode=p.POSITION_CONTROL,
+                                    targetPosition=-target_gripper_pos, force=MAX_FORCE)
+
+        if self.mode == 'joints_space':
+            # we want one action per joint (gripper is composed by 2 joints but considered as one)
+            assert(len(action) == self.n_joints - 1)
+
+            # add the command for the last gripper joint
+            for i in range(1):
+                action = np.append(action, action[-1])
+
+            # map the action
+            commands = []
+            for i, joint_command in enumerate(action):
+                percentage_command = (joint_command + 1) / 2  # between 0 and 1
+                if i == 8:
+                    percentage_command = 1 - percentage_command
+                low = self.lowerLimits[self.ids_in_ranges[i]]
+                high = self.upperLimits[self.ids_in_ranges[i]]
+
+                command = low + percentage_command * (high - low)
+                commands.append(command)
+
+
+
+            # apply the commands
+            setMotorsIds(self.baxterId, self.joints_id, commands)
+
         # roll the world (IK and motor control doesn't have to be done every loop)
         for _ in range(self.steps_to_roll):
             p.stepSimulation()
@@ -300,6 +373,7 @@ class BaxterGrasping(gym.Env):
         grip_pos = list(grip[0])  # x, y, z
         grip_orientation = list(grip[1])
 
+        jointPoses = getJointStates(self.baxterId)
         observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
 
         contact_points = p.getContactPoints(bodyA=self.baxterId, bodyB=self.objectId)
@@ -320,3 +394,4 @@ class BaxterGrasping(gym.Env):
 
     def close(self):
         p.disconnect()
+
