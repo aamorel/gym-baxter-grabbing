@@ -128,7 +128,7 @@ def setMotors(bodyId, joint_ids, jointPoses):
         jointInfo = p.getJointInfo(bodyId, i)
 
         p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=id, controlMode=p.POSITION_CONTROL,
-                                    targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=1)
+                                    targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=0.7)
 
 def getJointStates(bodyId, includeFixed=False):
     """
