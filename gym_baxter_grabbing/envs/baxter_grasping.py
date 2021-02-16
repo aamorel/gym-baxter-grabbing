@@ -152,7 +152,6 @@ def getJointRanges(bodyId, includeFixed=False):
         jointInfo = p.getJointInfo(bodyId, i)
         if includeFixed or jointInfo[3] > -1:
             # jointInfo[3] > -1 means that the joint is not fixed
-            print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
             ll, ul = jointInfo[8:10]
             jr = ul - ll
 
