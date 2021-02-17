@@ -118,10 +118,10 @@ def setUpWorld(obj='cube', random_obj=False, y_pos=0.12, initialSimSteps=100):
     if obj == 'cylinder':
         r = 0.032
         l = 0.15
-        col_id = p.createCollisionShape(p.GEOM_CYLINDER, radius=r, length=l)
+        col_id = p.createCollisionShape(p.GEOM_CYLINDER, radius=r, height=l)
         viz_id = p.createVisualShape(p.GEOM_CYLINDER, radius=r, length=l, rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        pos = [0, y_pos, -0.05]
+        pos = [0, y_pos, -0.1]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
