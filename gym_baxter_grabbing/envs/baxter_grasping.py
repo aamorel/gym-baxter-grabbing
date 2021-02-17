@@ -12,7 +12,7 @@ import json
 MAX_FORCE = 100
 
 
-def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
+def setUpWorld(obj='cube', random_obj=False, y_pos=0.12, initialSimSteps=100):
     """
     Reset the simulation to the beginning and reload all models.
 
@@ -110,7 +110,18 @@ def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[l, w, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[l, w, height], rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        pos = [0, 0.1, -0.05]
+        pos = [0, y_pos, -0.05]
+        if random_obj:
+            pos[0] = pos[0] + random.gauss(0, 0.01)
+            pos[1] = pos[1] + random.gauss(0, 0.01)
+        p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+    if obj == 'cylinder':
+        r = 0.032
+        l = 0.15
+        col_id = p.createCollisionShape(p.GEOM_CYLINDER, radius=r, length=l)
+        viz_id = p.createVisualShape(p.GEOM_CYLINDER, radius=r, length=l, rgbaColor=[1, 0, 0, 1])
+        obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+        pos = [0, y_pos, -0.05]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
@@ -118,7 +129,7 @@ def setUpWorld(obj='cube', random_obj=False, initialSimSteps=100):
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
         cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        pos = [0, 0.14, -0.05]
+        pos = [0, y_pos, -0.05]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
@@ -254,7 +265,7 @@ def getJointStates(bodyId, includeFixed=False):
         # print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
         if includeFixed or jointInfo[3] > -1:
             # jointInfo[3] > -1 means that the joint is not fixed
-            joint_state = p.getJointState(bodyId, i)
+            joint_state = p.getJointState(bodyId, i)[0]
             states.append(joint_state)
 
     return states
@@ -262,7 +273,7 @@ def getJointStates(bodyId, includeFixed=False):
 
 class BaxterGrasping(gym.Env):
 
-    def __init__(self, display=False, obj='cube', random_obj=False, mode='joints_space'):
+    def __init__(self, display=False, obj='cube', random_obj=False, mode='joints_space', y_pose=0.12):
 
         self.display = display
         if self.display:
@@ -273,7 +284,7 @@ class BaxterGrasping(gym.Env):
         self.mode = mode
 
         # set up the world, endEffector is the tip of the left finger
-        self.baxterId, self.endEffectorId, self.objectId = setUpWorld(obj=self.obj, random_obj=random_obj)
+        self.baxterId, self.endEffectorId, self.objectId = setUpWorld(obj=self.obj, random_obj=random_obj, y_pos=y_pose)
 
         # self.savefile = 'save_state.bullet'
         self.savestate = p.saveState()

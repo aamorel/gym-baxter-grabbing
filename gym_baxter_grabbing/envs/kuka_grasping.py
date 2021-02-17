@@ -152,7 +152,7 @@ def getJointStates(bodyId, includeFixed=False):
         # print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
         if includeFixed or jointInfo[3] > -1:
             # jointInfo[3] > -1 means that the joint is not fixed
-            joint_state = p.getJointState(bodyId, i)
+            joint_state = p.getJointState(bodyId, i)[0]
             states.append(joint_state)
 
     return states
