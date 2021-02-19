@@ -94,12 +94,12 @@ def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100
 
     # create object to grab
     if obj == 'cube':
-        square_base = 0.01
-        height = 0.06
+        square_base = 0.02
+        height = 0.02
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height], rgbaColor=[1, 0, 0, 1])
         obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        pos = [0, -0.1, -0.05]
+        pos = [0, -0.2, -0.05]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
@@ -107,11 +107,11 @@ def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100
     if obj == 'cup':
         path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
         cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        pos = [0, -0.1, -0.05]
+        pos = [0, -0.15, -0.05]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
-        obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
+        obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=0.7)
     
     # change friction  of object
     p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
@@ -173,6 +173,7 @@ class PepperGrasping(gym.Env):
 
         if self.display:
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
             p.resetDebugVisualizerCamera(2., 180, 0., [0.52, 0.2, np.pi / 4.])
             p.getCameraImage(320, 200, renderer=p.ER_BULLET_HARDWARE_OPENGL)
             sleep(1.)
