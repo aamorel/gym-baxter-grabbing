@@ -295,7 +295,7 @@ class BaxterGrasping(gym.Env):
         if self.display:
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-            p.resetDebugVisualizerCamera(2., 180, 0., [0.52, 0.2, np.pi / 4.])
+            p.resetDebugVisualizerCamera(1.2, 180, -40, [0, 0, 0])
             p.getCameraImage(320, 200, renderer=p.ER_BULLET_HARDWARE_OPENGL)
             sleep(1.)
 
@@ -364,8 +364,6 @@ class BaxterGrasping(gym.Env):
                 command = low + percentage_command * (high - low)
                 commands.append(command)
 
-
-
             # apply the commands
             setMotorsIds(self.baxterId, self.joints_id, commands)
 
@@ -410,4 +408,3 @@ class BaxterGrasping(gym.Env):
 
     def close(self):
         p.disconnect()
-
