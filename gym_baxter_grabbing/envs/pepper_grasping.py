@@ -252,6 +252,9 @@ class PepperGrasping(gym.Env):
         reward = None
         info = {}
         info['contact_points'] = contact_points
+        info['closed gripper'] = True
+        if jointPoses[-1] > 0.2:
+            info['closed gripper'] = False
         done = False
         return observation, reward, done, info
 

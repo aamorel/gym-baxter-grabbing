@@ -306,6 +306,14 @@ class KukaGrasping(gym.Env):
         reward = None
         info = {}
         info['contact_points'] = contact_points
+
+        info['closed gripper'] = True
+        if jointPoses[8] < -0.1 and jointPoses[10] > 0.1:
+            info['closed gripper'] =  False
+
+        if jointPoses[9] < 0 and jointPoses[11] > 0:
+            info['closed gripper'] =  False
+
         done = False
         return observation, reward, done, info
 

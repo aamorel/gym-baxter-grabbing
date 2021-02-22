@@ -262,8 +262,8 @@ def getJointStates(bodyId, includeFixed=False):
     # loop through all joints
     for i in range(numJoints):
         jointInfo = p.getJointInfo(bodyId, i)
-        # print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
         if includeFixed or jointInfo[3] > -1:
+            # print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
             # jointInfo[3] > -1 means that the joint is not fixed
             joint_state = p.getJointState(bodyId, i)[0]
             states.append(joint_state)
@@ -394,6 +394,11 @@ class BaxterGrasping(gym.Env):
         info = {}
         info['contact_points'] = contact_points
         info['self contact_points'] = self_contact_points
+        info['closed gripper'] = True
+        if jointPoses[-2] > 0.0003 or  jointPoses[-2] < -0.0003:
+            info['closed gripper'] = False
+        if jointPoses[-1] > 0.0003 or  jointPoses[-1] < -0.0003:
+            info['closed gripper'] = False
         done = False
         return observation, reward, done, info
 
