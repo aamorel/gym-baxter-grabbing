@@ -395,9 +395,9 @@ class BaxterGrasping(gym.Env):
         info['contact_points'] = contact_points
         info['self contact_points'] = self_contact_points
         info['closed gripper'] = True
-        if jointPoses[-2] > 0.0003 or  jointPoses[-2] < -0.0003:
+        if jointPoses[-2] > 0.0003 or jointPoses[-2] < -0.0003:
             info['closed gripper'] = False
-        if jointPoses[-1] > 0.0003 or  jointPoses[-1] < -0.0003:
+        if jointPoses[-1] > 0.0003 or jointPoses[-1] < -0.0003:
             info['closed gripper'] = False
         done = False
         return observation, reward, done, info
