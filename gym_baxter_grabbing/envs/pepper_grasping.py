@@ -98,7 +98,7 @@ def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100
         height = 0.02
         col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
         viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height], rgbaColor=[1, 0, 0, 1])
-        obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+        obj_to_grab_id = p.createMultiBody(baseMass=0.2, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
         pos = [0, -0.2, -0.15]
         if random_obj:
             pos[0] = pos[0] + random.gauss(0, 0.01)
