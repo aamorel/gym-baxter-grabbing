@@ -221,7 +221,7 @@ class KukaGrasping(gym.Env):
 
         self.steps_to_roll = 10
 
-        self.endEffectorId = 7
+        self.endEffectorId = 6
         self.joint_ranges = getJointRanges2(self.robot_id)
 
         self.joint_ranges = np.array(self.joint_ranges)
