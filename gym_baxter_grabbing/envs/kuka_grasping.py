@@ -110,6 +110,15 @@ def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100
             pos[0] = pos[0] + random.gauss(0, 0.01)
             pos[1] = pos[1] + random.gauss(0, 0.01)
         obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
+
+    if obj == 'deer':
+        path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
+        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+        pos = [0, 0.1, -0.05]
+        if random_obj:
+            pos[0] = pos[0] + random.gauss(0, 0.01)
+            pos[1] = pos[1] + random.gauss(0, 0.01)
+        obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
     
     # change friction  of object
     p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
