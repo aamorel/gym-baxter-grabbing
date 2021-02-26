@@ -123,6 +123,10 @@ def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100
     # change friction  of object
     p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
 
+
+    for _ in range(initialSimSteps):
+        p.stepSimulation()
+
     return kuka_id, obj_to_grab_id
 
 def setMotors(bodyId, joint_ids, jointPoses):
