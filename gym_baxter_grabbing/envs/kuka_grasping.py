@@ -1,4 +1,3 @@
-from time import sleep
 import pybullet as p
 import pybullet_data
 import numpy as np
@@ -6,128 +5,10 @@ import gym
 import os
 import random
 from pathlib import Path
+import gym_baxter_grabbing.envs.robot_grasping as robot_grasping
 
 MAX_FORCE = 100
 
-
-def setUpWorld(physics_client, obj='cube', random_obj=False, initialSimSteps=100):
-    """
-    Reset the simulation to the beginning and reload all models.
-
-    Parameters
-    ----------
-    initialSimSteps : int
-
-    Returns
-    -------
-    baxterId : int
-    endEffectorId : int
-    obj_to_grab_id : int
-    """
-    p.resetSimulation()
-    p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
-
-    p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-
-    # load plane
-    p.loadURDF("plane.urdf", [0, 0, -1], useFixedBase=True)
-
-    objects = p.loadSDF(os.path.join(pybullet_data.getDataPath(),"kuka_iiwa/kuka_with_gripper2.sdf"))
-    kuka_id = objects[0]
-
-    p.resetBasePositionAndOrientation(kuka_id, [-0.1, -0.5, -0.5], [0., 0., 0., 1.])
-
-    # table robot part shapes
-    t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1])
-    t_body_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1], rgbaColor=[0.3, 0.3, 0, 1])
-
-    t_legs = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.4])
-    t_legs_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.4], rgbaColor=[0.3, 0.3, 0, 1])
-
-    body_Mass = 500
-    visualShapeId = t_body_v
-    link_Masses = [30, 30, 30, 30]
-
-    linkCollisionShapeIndices = [t_legs] * 4
-
-    nlnk = len(link_Masses)
-    linkVisualShapeIndices = [t_legs_v] * nlnk
-    # link positions wrt the link they are attached to
-
-    linkPositions = [[0.35, 0.35, -0.3], [-0.35, 0.35, -0.3], [0.35, -0.35, -0.3], [-0.35, -0.35, -0.3]]
-
-    linkOrientations = [[0, 0, 0, 1]] * nlnk
-    linkInertialFramePositions = [[0, 0, 0]] * nlnk
-    # note the orientations are given in quaternions (4 params). There are function to convert of Euler angles and back
-    linkInertialFrameOrientations = [[0, 0, 0, 1]] * nlnk
-    # indices determine for each link which other link it is attached to
-    indices = [0] * nlnk
-    # most joint are revolving. The prismatic joints are kept fixed for now
-    jointTypes = [p.JOINT_FIXED] * nlnk
-    # revolution axis for each revolving joint
-    axis = [[1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1]]
-
-    # drop the body in the scene at the following body coordinates
-    basePosition = [0, 0.4, 0]
-    baseOrientation = [0, 0, 0, 1]
-    # main function that creates the table
-    p.createMultiBody(body_Mass, t_body, visualShapeId, basePosition, baseOrientation,
-                      linkMasses=link_Masses,
-                      linkCollisionShapeIndices=linkCollisionShapeIndices,
-                      linkVisualShapeIndices=linkVisualShapeIndices,
-                      linkPositions=linkPositions,
-                      linkOrientations=linkOrientations,
-                      linkInertialFramePositions=linkInertialFramePositions,
-                      linkInertialFrameOrientations=linkInertialFrameOrientations,
-                      linkParentIndices=indices,
-                      linkJointTypes=jointTypes,
-                      linkJointAxis=axis)
-
-    # set gravity
-    p.setGravity(0., 0., -9.81)
-
-    # let the world run for a bit
-    for _ in range(initialSimSteps):
-        p.stepSimulation()
-
-    # create object to grab
-    if obj == 'cube':
-        square_base = 0.03
-        height = 0.08
-        col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
-        viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height], rgbaColor=[1, 0, 0, 1])
-        obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-        pos = [0, 0.1, -0.05]
-        if random_obj:
-            pos[0] = pos[0] + random.gauss(0, 0.01)
-            pos[1] = pos[1] + random.gauss(0, 0.01)
-        p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
-    if obj == 'cup':
-        path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
-        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        pos = [0, 0.1, -0.05]
-        if random_obj:
-            pos[0] = pos[0] + random.gauss(0, 0.01)
-            pos[1] = pos[1] + random.gauss(0, 0.01)
-        obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
-
-    if obj == 'deer':
-        path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
-        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-        pos = [0, 0.1, -0.05]
-        if random_obj:
-            pos[0] = pos[0] + random.gauss(0, 0.01)
-            pos[1] = pos[1] + random.gauss(0, 0.01)
-        obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
-    
-    # change friction  of object
-    p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
-
-
-    for _ in range(initialSimSteps):
-        p.stepSimulation()
-
-    return kuka_id, obj_to_grab_id
 
 def setMotors(bodyId, joint_ids, jointPoses):
     """
@@ -138,10 +19,10 @@ def setMotors(bodyId, joint_ids, jointPoses):
     """
 
     for i, id in enumerate(joint_ids):
-        jointInfo = p.getJointInfo(bodyId, i)
 
         p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=id, controlMode=p.POSITION_CONTROL,
-                                    targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=0.7)
+                                targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=0.7)
+
 
 def getJointStates(bodyId, includeFixed=False):
     """
@@ -169,6 +50,7 @@ def getJointStates(bodyId, includeFixed=False):
             states.append(joint_state)
 
     return states
+
 
 def getJointRanges2(bodyId, includeFixed=False):
     """
@@ -208,33 +90,12 @@ def getJointRanges2(bodyId, includeFixed=False):
     return lowerLimits, upperLimits, jointRanges, restPoses
 
 
-class KukaGrasping(gym.Env):
+class KukaGrasping(robot_grasping.RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', random_obj=False):
+    def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1):
+        super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.3, 180, -40],
+                         gripper_display=True, steps_to_roll=steps_to_roll)
 
-        self.display = display
-        if self.display:
-            physics_client = p.connect(p.GUI)
-        else:
-            physics_client = p.connect(p.DIRECT)
-        self.obj = obj
-
-        # set up the world, endEffector is the tip of the left finger
-        self.robot_id, self.objectId = setUpWorld(physics_client, obj=self.obj, random_obj=random_obj)
-
-        # self.savefile = 'save_state.bullet'
-        self.savestate = p.saveState()
-
-        if self.display:
-            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-            p.resetDebugVisualizerCamera(1.3, 180, -40, [0, 0, 0])
-            p.getCameraImage(320, 200, renderer=p.ER_BULLET_HARDWARE_OPENGL)
-            sleep(1.)
-
-        self.steps_to_roll = 10
-
-        self.endEffectorId = 6
         self.joint_ranges = getJointRanges2(self.robot_id)
 
         self.joint_ranges = np.array(self.joint_ranges)
@@ -259,21 +120,117 @@ class KukaGrasping(gym.Env):
 
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.n_joints,))
 
-    def set_steps_to_roll(self, steps_to_roll):
-        self.steps_to_roll = steps_to_roll
+    def setup_world(self, initialSimSteps=100):
+    
+        p.resetSimulation()
+        p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
+
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
+
+        # load plane
+        p.loadURDF("plane.urdf", [0, 0, -1], useFixedBase=True)
+
+        objects = p.loadSDF(os.path.join(pybullet_data.getDataPath(), "kuka_iiwa/kuka_with_gripper2.sdf"))
+        kuka_id = objects[0]
+
+        p.resetBasePositionAndOrientation(kuka_id, [-0.1, -0.5, -0.5], [0., 0., 0., 1.])
+
+        # table robot part shapes
+        t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1])
+        t_body_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1], rgbaColor=[0.3, 0.3, 0, 1])
+
+        t_legs = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.4])
+        t_legs_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.4], rgbaColor=[0.3, 0.3, 0, 1])
+
+        body_Mass = 500
+        visualShapeId = t_body_v
+        link_Masses = [30, 30, 30, 30]
+
+        linkCollisionShapeIndices = [t_legs] * 4
+
+        nlnk = len(link_Masses)
+        linkVisualShapeIndices = [t_legs_v] * nlnk
+        # link positions wrt the link they are attached to
+
+        linkPositions = [[0.35, 0.35, -0.3], [-0.35, 0.35, -0.3], [0.35, -0.35, -0.3], [-0.35, -0.35, -0.3]]
+
+        linkOrientations = [[0, 0, 0, 1]] * nlnk
+        linkInertialFramePositions = [[0, 0, 0]] * nlnk
+        # note the orientations are given in quaternions (4 params).
+        linkInertialFrameOrientations = [[0, 0, 0, 1]] * nlnk
+        # indices determine for each link which other link it is attached to
+        indices = [0] * nlnk
+        # most joint are revolving. The prismatic joints are kept fixed for now
+        jointTypes = [p.JOINT_FIXED] * nlnk
+        # revolution axis for each revolving joint
+        axis = [[1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1]]
+
+        # drop the body in the scene at the following body coordinates
+        basePosition = [0, 0.4, 0]
+        baseOrientation = [0, 0, 0, 1]
+        # main function that creates the table
+        p.createMultiBody(body_Mass, t_body, visualShapeId, basePosition, baseOrientation,
+                          linkMasses=link_Masses,
+                          linkCollisionShapeIndices=linkCollisionShapeIndices,
+                          linkVisualShapeIndices=linkVisualShapeIndices,
+                          linkPositions=linkPositions,
+                          linkOrientations=linkOrientations,
+                          linkInertialFramePositions=linkInertialFramePositions,
+                          linkInertialFrameOrientations=linkInertialFrameOrientations,
+                          linkParentIndices=indices,
+                          linkJointTypes=jointTypes,
+                          linkJointAxis=axis)
+
+        # set gravity
+        p.setGravity(0., 0., -9.81)
+
+        # let the world run for a bit
+        for _ in range(initialSimSteps):
+            p.stepSimulation()
+
+        # create object to grab
+        if self.obj == 'cube':
+            square_base = 0.03
+            height = 0.08
+            col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
+            viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height],
+                                         rgbaColor=[1, 0, 0, 1])
+            obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+            pos = [0, 0.1, -0.05]
+            if self.random_obj:
+                pos[0] = pos[0] + random.gauss(0, 0.01)
+                pos[1] = pos[1] + random.gauss(0, 0.01)
+            p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+        if self.obj == 'cup':
+            path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
+            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
+            pos = [0, 0.1, -0.05]
+            if self.random_obj:
+                pos[0] = pos[0] + random.gauss(0, 0.01)
+                pos[1] = pos[1] + random.gauss(0, 0.01)
+            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
+
+        if self.obj == 'deer':
+            path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
+            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+            pos = [0, 0.1, -0.05]
+            if self.random_obj:
+                pos[0] = pos[0] + random.gauss(0, 0.01)
+                pos[1] = pos[1] + random.gauss(0, 0.01)
+            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
+        
+        # change friction  of object
+        p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
+
+        for _ in range(initialSimSteps):
+            p.stepSimulation()
+
+        self.obj_id = obj_to_grab_id
+        self.robot_id = kuka_id
+        self.end_effector_id = 6
 
     def step(self, action):
-        """Executes one step of the simulation
 
-        Args:
-            action (list): between -1 and 1
-
-        Returns:
-            list: observation
-            float: reward
-            bool: done
-            dict: info
-        """
         # we want one action per joint (gripper is composed by 4 joints but considered as one)
         assert(len(action) == self.n_joints - 3)
 
@@ -291,23 +248,23 @@ class KukaGrasping(gym.Env):
             command = low + percentage_command * (high - low)
             commands.append(command)
 
-
-
         # apply the commands
         setMotors(self.robot_id, self.joints_id, commands)
+
+        super().step()
 
         # roll the world (motor control doesn't have to be done every loop)
         for _ in range(self.steps_to_roll):
             p.stepSimulation()
 
         # get information on target object
-        obj = p.getBasePositionAndOrientation(self.objectId)
+        obj = p.getBasePositionAndOrientation(self.obj_id)
         obj_pos = list(obj[0])  # x, y, z
         # obj_orientation = p.getEulerFromQuaternion(list(obj[1]))
         obj_orientation = list(obj[1])
 
         # get information on gripper
-        grip = p.getLinkState(self.robot_id, self.endEffectorId)
+        grip = p.getLinkState(self.robot_id, self.end_effector_id)
         grip_pos = list(grip[0])  # x, y, z
         grip_orientation = list(grip[1])
 
@@ -315,26 +272,17 @@ class KukaGrasping(gym.Env):
 
         observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
 
-        contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.objectId)
+        contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.obj_id)
         reward = None
         info = {}
         info['contact_points'] = contact_points
 
         info['closed gripper'] = True
         if jointPoses[8] < -0.1 and jointPoses[10] > 0.1:
-            info['closed gripper'] =  False
+            info['closed gripper'] = False
 
         if jointPoses[9] < 0 and jointPoses[11] > 0:
-            info['closed gripper'] =  False
+            info['closed gripper'] = False
 
         done = False
         return observation, reward, done, info
-
-    def reset(self):
-        p.restoreState(self.savestate)
-
-    def render(self, mode='human'):
-        pass
-
-    def close(self):
-        p.disconnect()
