@@ -178,14 +178,14 @@ class PepperGrasping(robot_grasping.RobotGrasping):
 
         self.end_effector_id = all_joints['LHand'].getIndex()
             
-    def step(self, action):
+    def actuate(self):
 
         # we want one action per joint
-        assert(len(action) == self.n_joints)
+        assert(len(self.action) == self.n_joints)
 
         # map the action
         commands = []
-        for i, joint_command in enumerate(action):
+        for i, joint_command in enumerate(self.action):
             percentage_command = (joint_command + 1) / 2  # between 0 and 1
             low = self.joint_ranges[0][i]
             high = self.joint_ranges[1][i]
@@ -195,33 +195,11 @@ class PepperGrasping(robot_grasping.RobotGrasping):
         # apply the commands
         self.pepper.setAngles(self.joints, commands, self.speeds)
 
-        super.step()
+    def compute_joint_poses(self):
 
-        # roll the world (motor control doesn't have to be done every loop)
-        for _ in range(self.steps_to_roll):
-            p.stepSimulation()
+        self.joint_poses = self.pepper.getAnglesPosition(self.joints)
 
-        # get information on target object
-        obj = p.getBasePositionAndOrientation(self.obj_id)
-        obj_pos = list(obj[0])  # x, y, z
-        # obj_orientation = p.getEulerFromQuaternion(list(obj[1]))
-        obj_orientation = list(obj[1])
-
-        # get information on gripper
-        grip = p.getLinkState(self.robot_id, self.end_effector_id)
-        grip_pos = list(grip[0])  # x, y, z
-        grip_orientation = list(grip[1])
-
-        jointPoses = self.pepper.getAnglesPosition(self.joints)
-
-        observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
-
-        contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.obj_id)
-        reward = None
-        info = {}
-        info['contact_points'] = contact_points
-        info['closed gripper'] = True
-        if jointPoses[-1] > 0.2:
-            info['closed gripper'] = False
-        done = False
-        return observation, reward, done, info
+    def compute_grip_info(self):
+        self.info['closed gripper'] = True
+        if self.joint_poses[-1] > 0.2:
+            self.info['closed gripper'] = False

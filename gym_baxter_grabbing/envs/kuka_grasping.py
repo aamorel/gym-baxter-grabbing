@@ -229,18 +229,17 @@ class KukaGrasping(robot_grasping.RobotGrasping):
         self.robot_id = kuka_id
         self.end_effector_id = 6
 
-    def step(self, action):
-
+    def actuate(self):
         # we want one action per joint (gripper is composed by 4 joints but considered as one)
-        assert(len(action) == self.n_joints - 3)
+        assert(len(self.action) == self.n_joints - 3)
 
         # add the 3 commands for the 3 last gripper joints
         for i in range(3):
-            action = np.append(action, action[-1])
+            self.action = np.append(self.action, self.action[-1])
 
         # map the action
         commands = []
-        for i, joint_command in enumerate(action):
+        for i, joint_command in enumerate(self.action):
             percentage_command = (joint_command + 1) / 2  # between 0 and 1
             low = self.joint_ranges[0][i]
             high = self.joint_ranges[1][i]
@@ -251,38 +250,14 @@ class KukaGrasping(robot_grasping.RobotGrasping):
         # apply the commands
         setMotors(self.robot_id, self.joints_id, commands)
 
-        super().step()
+    def compute_joint_poses(self):
 
-        # roll the world (motor control doesn't have to be done every loop)
-        for _ in range(self.steps_to_roll):
-            p.stepSimulation()
+        self.joint_poses = getJointStates(self.robot_id)
 
-        # get information on target object
-        obj = p.getBasePositionAndOrientation(self.obj_id)
-        obj_pos = list(obj[0])  # x, y, z
-        # obj_orientation = p.getEulerFromQuaternion(list(obj[1]))
-        obj_orientation = list(obj[1])
+    def compute_grip_info(self):
+        self.info['closed gripper'] = True
+        if self.joint_poses[8] < -0.1 and self.joint_poses[10] > 0.1:
+            self.info['closed gripper'] = False
 
-        # get information on gripper
-        grip = p.getLinkState(self.robot_id, self.end_effector_id)
-        grip_pos = list(grip[0])  # x, y, z
-        grip_orientation = list(grip[1])
-
-        jointPoses = getJointStates(self.robot_id)
-
-        observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
-
-        contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.obj_id)
-        reward = None
-        info = {}
-        info['contact_points'] = contact_points
-
-        info['closed gripper'] = True
-        if jointPoses[8] < -0.1 and jointPoses[10] > 0.1:
-            info['closed gripper'] = False
-
-        if jointPoses[9] < 0 and jointPoses[11] > 0:
-            info['closed gripper'] = False
-
-        done = False
-        return observation, reward, done, info
+        if self.joint_poses[9] < 0 and self.joint_poses[11] > 0:
+            self.info['closed gripper'] = False

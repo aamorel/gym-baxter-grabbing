@@ -286,14 +286,14 @@ class BaxterGrasping(robot_grasping.RobotGrasping):
         self.end_effector_id = end_effector_id
         self.obj_id = obj_to_grab_id
 
-    def step(self, action):
+    def actuate(self):
 
         if self.mode == 'end_effector_space':
-            target_position = action[0:3]
-            target_orientation = action[3:7]
+            target_position = self.action[0:3]
+            target_orientation = self.action[3:7]
             quat_orientation = pyq.Quaternion(target_orientation)
             quat_orientation = quat_orientation.normalised
-            target_gripper = action[7]
+            target_gripper = self.action[7]
 
             jointPoses = accurateIK(self.robot_id, self.end_effector_id, target_position, target_orientation,
                                     self.lowerLimits,
@@ -309,15 +309,15 @@ class BaxterGrasping(robot_grasping.RobotGrasping):
 
         if self.mode == 'joints_space':
             # we want one action per joint (gripper is composed by 2 joints but considered as one)
-            assert(len(action) == self.n_joints - 1)
+            assert(len(self.action) == self.n_joints - 1)
 
             # add the command for the last gripper joint
             for i in range(1):
-                action = np.append(action, action[-1])
+                self.action = np.append(self.action, self.action[-1])
 
             # map the action
             commands = []
-            for i, joint_command in enumerate(action):
+            for i, joint_command in enumerate(self.action):
                 percentage_command = (joint_command + 1) / 2  # between 0 and 1
                 if i == 8:
                     percentage_command = 1 - percentage_command
@@ -330,37 +330,18 @@ class BaxterGrasping(robot_grasping.RobotGrasping):
             # apply the commands
             setMotorsIds(self.robot_id, self.joints_id, commands)
 
-        super.step()
+    def compute_joint_poses(self):
 
-        # roll the world (IK and motor control doesn't have to be done every loop)
-        for _ in range(self.steps_to_roll):
-            p.stepSimulation()
-
-        # get information on target object
-        obj = p.getBasePositionAndOrientation(self.obj_id)
-        obj_pos = list(obj[0])  # x, y, z
-        # obj_orientation = p.getEulerFromQuaternion(list(obj[1]))
-        obj_orientation = list(obj[1])
-
-        # get information on gripper
-        grip = p.getLinkState(self.robot_id, self.end_effector_id)
-        grip_pos = list(grip[0])  # x, y, z
-        grip_orientation = list(grip[1])
-
-        jointPoses = getJointStates(self.robot_id)
-        observation = [obj_pos, obj_orientation, grip_pos, grip_orientation, jointPoses]
-
-        contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.obj_id)
+        self.joint_poses = getJointStates(self.robot_id)
+    
+    def compute_self_contact(self):
+        
         self_contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id)
+        self.info['self contact_points'] = self_contact_points
 
-        reward = None
-        info = {}
-        info['contact_points'] = contact_points
-        info['self contact_points'] = self_contact_points
-        info['closed gripper'] = True
-        if jointPoses[-2] > 0.0003 or jointPoses[-2] < -0.0003:
-            info['closed gripper'] = False
-        if jointPoses[-1] > 0.0003 or jointPoses[-1] < -0.0003:
-            info['closed gripper'] = False
-        done = False
-        return observation, reward, done, info
+    def compute_grip_info(self):
+        self.info['closed gripper'] = True
+        if self.joint_poses[-2] > 0.0003 or self.joint_poses[-2] < -0.0003:
+            self.info['closed gripper'] = False
+        if self.joint_poses[-1] > 0.0003 or self.joint_poses[-1] < -0.0003:
+            self.info['closed gripper'] = False
