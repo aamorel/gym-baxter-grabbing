@@ -99,7 +99,7 @@ class RobotGrasping(gym.Env):
             self.line_3 = p.addUserDebugLine([0, 0, 0], [0, 0, 0.2], [0, 0, 255], lineWidth=self.line_width,
                                              replaceItemUniqueId=self.line_3,
                                              parentObjectUniqueId=self.robot_id,
-                                             parentLinkIndex=self.end_effector_id)            
+                                             parentLinkIndex=self.end_effector_id)
         reward = None
         done = False
         return observation, reward, done, self.info

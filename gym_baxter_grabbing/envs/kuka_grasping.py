@@ -5,7 +5,7 @@ import gym
 import os
 import random
 from pathlib import Path
-import gym_baxter_grabbing.envs.robot_grasping as robot_grasping
+from gym_baxter_grabbing.envs.robot_grasping import RobotGrasping
 
 MAX_FORCE = 100
 
@@ -90,7 +90,7 @@ def getJointRanges2(bodyId, includeFixed=False):
     return lowerLimits, upperLimits, jointRanges, restPoses
 
 
-class KukaGrasping(robot_grasping.RobotGrasping):
+class KukaGrasping(RobotGrasping):
 
     def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1):
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.3, 180, -40],

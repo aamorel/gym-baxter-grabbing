@@ -4,7 +4,7 @@ import os
 import random
 from pathlib import Path
 import pyquaternion as pyq
-import gym_baxter_grabbing.envs.robot_grasping as robot_grasping
+from gym_baxter_grabbing.envs.robot_grasping import RobotGrasping
 import json
 
 MAX_FORCE = 100
@@ -141,7 +141,7 @@ def getJointStates(bodyId, includeFixed=False):
     return states
 
 
-class BaxterGrasping(robot_grasping.RobotGrasping):
+class BaxterGrasping(RobotGrasping):
 
     def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, mode='joints_space', y_pose=0.12):
         self.y_pos = y_pose
