@@ -6,13 +6,14 @@ from time import sleep
 class RobotGrasping(gym.Env):
 
     def __init__(self, display=False, obj='cube', random_obj=False, pos_cam=[1.3, 180, -40],
-                 gripper_display=False, steps_to_roll=1):
+                 gripper_display=False, steps_to_roll=1, random_var=0.01):
         self.obj = obj
         self.display = display
         self.random_obj = random_obj
         self.pos_cam = pos_cam
         self.gripper_display = gripper_display
         self.steps_to_roll = steps_to_roll
+        self.random_var = random_var
         if self.display:
             self.physics_client = p.connect(p.GUI)
         else:

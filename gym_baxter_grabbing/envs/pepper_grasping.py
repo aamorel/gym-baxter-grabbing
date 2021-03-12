@@ -44,9 +44,9 @@ def getJointRanges(bodyId, joints_id):
 
 class PepperGrasping(RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1):
+    def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, random_var=0.01):
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[0.5, 180, -40],
-                         gripper_display=True, steps_to_roll=steps_to_roll)
+                         gripper_display=True, steps_to_roll=steps_to_roll, random_var=0.01)
 
         self.steps_to_roll = 10
 
@@ -145,24 +145,24 @@ class PepperGrasping(RobotGrasping):
                                                baseVisualShapeIndex=viz_id)
             pos = [0, -0.2, -0.15]
             if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, 0.01)
-                pos[1] = pos[1] + random.gauss(0, 0.01)
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
         if self.obj == 'cup':
             path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
             pos = [0, -0.15, -0.05]
             if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, 0.01)
-                pos[1] = pos[1] + random.gauss(0, 0.01)
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
             obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=0.7)
         if self.obj == 'deer':
             path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
             pos = [0, -0.15, -0.05]
             if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, 0.01)
-                pos[1] = pos[1] + random.gauss(0, 0.01)
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
             obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=0.6)
         
         # change friction  of object

@@ -143,11 +143,12 @@ def getJointStates(bodyId, includeFixed=False):
 
 class BaxterGrasping(RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, mode='joints_space', y_pose=0.12):
+    def __init__(self, display=False, obj='cube', random_obj=False,
+                 steps_to_roll=1, mode='joints_space', y_pose=0.12, random_var=0.01):
         self.y_pos = y_pose
         self.mode = mode
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.2, 180, -40],
-                         gripper_display=True, steps_to_roll=steps_to_roll)
+                         gripper_display=True, steps_to_roll=steps_to_roll, random_var=0.01)
         self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.robot_id,
                                                                                               includeFixed=False)
         # much simpler and faster (we want a linear function)
@@ -249,8 +250,8 @@ class BaxterGrasping(RobotGrasping):
             obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
             pos = [0, self.y_pos, -0.05]
             if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, 0.01)
-                pos[1] = pos[1] + random.gauss(0, 0.01)
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
         if self.obj == 'cylinder':
             r = 0.032
@@ -260,24 +261,24 @@ class BaxterGrasping(RobotGrasping):
             obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
             pos = [0, self.y_pos, -0.1]
             if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, 0.01)
-                pos[1] = pos[1] + random.gauss(0, 0.01)
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
         if self.obj == 'cup':
             path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
             pos = [0, self.y_pos, -0.05]
             if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, 0.01)
-                pos[1] = pos[1] + random.gauss(0, 0.01)
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
             obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=2)
         if self.obj == 'deer':
             path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
             pos = [0, 0.1, -0.05]
             if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, 0.01)
-                pos[1] = pos[1] + random.gauss(0, 0.01)
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
             obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
 
         # change friction  of object
