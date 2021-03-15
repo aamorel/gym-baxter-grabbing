@@ -44,9 +44,10 @@ def getJointRanges(bodyId, joints_id):
 
 class PepperGrasping(RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, random_var=0.01):
+    def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, random_var=0.01,
+                 delta_pos=[0, 0]):
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[0.5, 180, -40],
-                         gripper_display=True, steps_to_roll=steps_to_roll, random_var=0.01)
+                         gripper_display=True, steps_to_roll=steps_to_roll, random_var=0.01, delta_pos=delta_pos)
 
         # self.joints = ['HipRoll',
         #                'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll',
@@ -142,6 +143,8 @@ class PepperGrasping(RobotGrasping):
             obj_to_grab_id = p.createMultiBody(baseMass=0.2, baseCollisionShapeIndex=col_id,
                                                baseVisualShapeIndex=viz_id)
             pos = [0, -0.2, -0.15]
+            pos[1] += self.delta_pos[0]
+            pos[2] += self.delta_pos[1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
@@ -150,6 +153,8 @@ class PepperGrasping(RobotGrasping):
             path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
             pos = [0, -0.15, -0.05]
+            pos[1] += self.delta_pos[0]
+            pos[2] += self.delta_pos[1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
@@ -158,6 +163,8 @@ class PepperGrasping(RobotGrasping):
             path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
             pos = [0, -0.15, -0.05]
+            pos[1] += self.delta_pos[0]
+            pos[2] += self.delta_pos[1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
