@@ -154,8 +154,6 @@ class BaxterGrasping(RobotGrasping):
         # much simpler and faster (we want a linear function)
         self.interp_grip = lambda a: (a + 1) * 0.010416
 
-        self.steps_to_roll = 10
-
         if mode == 'joints_space':
             self.joints_id = [34, 35, 36, 37, 38, 40, 41, 49, 51]
             self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]

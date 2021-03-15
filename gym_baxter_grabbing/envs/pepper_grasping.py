@@ -48,8 +48,6 @@ class PepperGrasping(RobotGrasping):
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[0.5, 180, -40],
                          gripper_display=True, steps_to_roll=steps_to_roll, random_var=0.01)
 
-        self.steps_to_roll = 10
-
         # self.joints = ['HipRoll',
         #                'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll',
         #                'LWristYaw', 'LFinger21', 'LFinger22', 'LFinger23',
