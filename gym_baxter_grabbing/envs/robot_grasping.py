@@ -1,6 +1,7 @@
 import gym
 import pybullet as p
 from time import sleep
+import pybullet_data
 
 
 class RobotGrasping(gym.Env):
@@ -20,6 +21,7 @@ class RobotGrasping(gym.Env):
         else:
             self.physics_client = p.connect(p.DIRECT)
 
+        p.setAdditionalSearchPath(pybullet_data.getDataPath())
         # setup the world
         self.setup_world()
 

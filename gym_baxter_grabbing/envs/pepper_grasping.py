@@ -47,7 +47,7 @@ class PepperGrasping(RobotGrasping):
     def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, random_var=0.01,
                  delta_pos=[0, 0]):
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[0.5, 180, -40],
-                         gripper_display=True, steps_to_roll=steps_to_roll, random_var=0.01, delta_pos=delta_pos)
+                         gripper_display=True, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
 
         # self.joints = ['HipRoll',
         #                'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll',
@@ -165,6 +165,14 @@ class PepperGrasping(RobotGrasping):
             pos = [0, -0.15, -0.05]
             pos[1] += self.delta_pos[0]
             pos[2] += self.delta_pos[1]
+            if self.random_obj:
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
+            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=0.6)
+        if self.obj == 'glass':
+            path = os.path.join(Path(__file__).parent, "glass_urdf.urdf")
+            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+            pos = [0, -0.15, -0.1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
