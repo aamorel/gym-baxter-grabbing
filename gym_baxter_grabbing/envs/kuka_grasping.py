@@ -229,7 +229,7 @@ class KukaGrasping(RobotGrasping):
         if self.obj == 'glass':
             path = os.path.join(Path(__file__).parent, "glass_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-            pos = [0, 0.1, -0.05]
+            pos = [0, 0.2, -0.05]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
