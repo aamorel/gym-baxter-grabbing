@@ -93,7 +93,12 @@ def getJointRanges2(bodyId, includeFixed=False):
 class KukaGrasping(RobotGrasping):
 
     def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, random_var=0.01,
-                 delta_pos=[0, 0]):
+                 delta_pos=[0, 0], obstacle=False, obstacle_pos=[0, 0, 0], obstacle_size=0.1):
+        
+        self.obstacle = obstacle
+        self.obstacle_pos = obstacle_pos
+        self.obstacle_size = obstacle_size
+
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.3, 180, -40],
                          gripper_display=True, steps_to_roll=steps_to_roll, random_var=random_var,
                          delta_pos=delta_pos)
@@ -237,6 +242,15 @@ class KukaGrasping(RobotGrasping):
         
         # change friction  of object
         p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
+
+        if self.obstacle:
+            # create the obstacle object at the required location
+            col_id = p.createCollisionShape(p.GEOM_SPHERE, radius=self.obstacle_size)
+            viz_id = p.createVisualShape(p.GEOM_SPHERE, radius=self.obstacle_size,
+                                         rgbaColor=[0, 0, 0, 1])
+            obj_to_grab_id = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+            pos = self.obstacle_pos
+            p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
 
         for _ in range(initialSimSteps):
             p.stepSimulation()

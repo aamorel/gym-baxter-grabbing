@@ -6,7 +6,7 @@
     <link name="base_link">
         <visual>
             <geometry>
-                <mesh filename="mug-9.obj" scale="0.005 0.005 0.005"/>
+                <mesh filename="cup.obj" scale="0.005 0.005 0.005"/>
             </geometry>
             <origin rpy="1.57 0 0" xyz="0 0 0" />
             <material name="white"/>
@@ -14,7 +14,7 @@
 
         <collision>
             <geometry>
-                <mesh filename="mug-9.obj" scale="0.005 0.005 0.005"/>
+                <mesh filename="cup.obj" scale="0.005 0.005 0.005"/>
             </geometry>
             <origin rpy="1.57 0 0" xyz="0 0 0" />
         </collision>
