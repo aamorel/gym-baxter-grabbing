@@ -275,7 +275,7 @@ class BaxterGrasping(RobotGrasping):
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
-            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=2)
+            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=1)
         if self.obj == 'deer':
             path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
