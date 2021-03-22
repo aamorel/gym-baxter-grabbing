@@ -171,7 +171,8 @@ class BaxterGrasping(RobotGrasping):
 
         # load Baxter
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
-        robot_id = p.loadURDF("baxter_common/baxter_description/urdf/toms_baxter.urdf",
+        path_baxter = os.join(Path(__file__).parent, 'robots/baxter_common/baxter_description/urdf/toms_baxter.urdf')
+        robot_id = p.loadURDF(path_baxter,
                               useFixedBase=False, flags=urdf_flags)
         p.resetBasePositionAndOrientation(robot_id, [0, -0.8, 0.0], [0., 0., -1., -1.])
 
