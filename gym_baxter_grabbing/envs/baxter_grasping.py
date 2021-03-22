@@ -260,18 +260,33 @@ class BaxterGrasping(RobotGrasping):
             viz_id = p.createVisualShape(p.GEOM_CYLINDER, radius=r, length=le, rgbaColor=[1, 0, 0, 1])
             obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
             pos = [0, self.y_pos, -0.1]
-            pos[1] += self.delta_pos[0]
-            pos[2] += self.delta_pos[1]
+            pos[0] += self.delta_pos[0]
+            pos[1] += self.delta_pos[1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+
+        if self.obj == 'cylinder_r':
+            r = 0.021
+            le = 0.22
+            col_id = p.createCollisionShape(p.GEOM_CYLINDER, radius=r, height=le)
+            viz_id = p.createVisualShape(p.GEOM_CYLINDER, radius=r, length=le, rgbaColor=[1, 0, 0, 1])
+            obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+            pos = [0, self.y_pos, -0.1]
+            pos[0] += self.delta_pos[0]
+            pos[1] += self.delta_pos[1]
+            if self.random_obj:
+                pos[0] = pos[0] + random.gauss(0, self.random_var)
+                pos[1] = pos[1] + random.gauss(0, self.random_var)
+            p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+
         if self.obj == 'cup':
             path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
             pos = [0, self.y_pos, -0.05]
-            pos[1] += self.delta_pos[0]
-            pos[2] += self.delta_pos[1]
+            pos[0] += self.delta_pos[0]
+            pos[1] += self.delta_pos[1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
@@ -280,8 +295,8 @@ class BaxterGrasping(RobotGrasping):
             path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
             pos = [0, 0.1, -0.05]
-            pos[1] += self.delta_pos[0]
-            pos[2] += self.delta_pos[1]
+            pos[0] += self.delta_pos[0]
+            pos[1] += self.delta_pos[1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
@@ -290,6 +305,8 @@ class BaxterGrasping(RobotGrasping):
             path = os.path.join(Path(__file__).parent, "glass_urdf.urdf")
             cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
             pos = [0, 0.1, -0.1]
+            pos[0] += self.delta_pos[0]
+            pos[1] += self.delta_pos[1]
             if self.random_obj:
                 pos[0] = pos[0] + random.gauss(0, self.random_var)
                 pos[1] = pos[1] + random.gauss(0, self.random_var)
