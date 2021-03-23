@@ -148,7 +148,7 @@ class BaxterGrasping(RobotGrasping):
         self.y_pos = y_pose
         self.mode = mode
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.2, 180, -40],
-                         gripper_display=True, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
+                         gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
         self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.robot_id,
                                                                                               includeFixed=False)
         # much simpler and faster (we want a linear function)
@@ -171,7 +171,8 @@ class BaxterGrasping(RobotGrasping):
 
         # load Baxter
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
-        path_baxter = os.join(Path(__file__).parent, 'robots/baxter_common/baxter_description/urdf/toms_baxter.urdf')
+        path_baxter = os.path.join(Path(__file__).parent,
+                                   'robots/baxter_common/baxter_description/urdf/toms_baxter.urdf')
         robot_id = p.loadURDF(path_baxter,
                               useFixedBase=False, flags=urdf_flags)
         p.resetBasePositionAndOrientation(robot_id, [0, -0.8, 0.0], [0., 0., -1., -1.])

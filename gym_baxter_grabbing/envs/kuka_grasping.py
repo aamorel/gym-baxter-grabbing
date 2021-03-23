@@ -251,8 +251,12 @@ class KukaGrasping(RobotGrasping):
             viz_id = p.createVisualShape(p.GEOM_SPHERE, radius=self.obstacle_size,
                                          rgbaColor=[0, 0, 0, 1])
             obj_to_grab_id = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-            pos = self.obstacle_pos
-            p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+            pos_obstacle = pos
+            pos_obstacle[0] += self.obstacle_pos[0]
+            pos_obstacle[1] += self.obstacle_pos[1]
+            pos_obstacle[2] += self.obstacle_pos[2]
+
+            p.resetBasePositionAndOrientation(obj_to_grab_id, pos_obstacle, [0, 0, 0, 1])
 
         for _ in range(initialSimSteps):
             p.stepSimulation()
