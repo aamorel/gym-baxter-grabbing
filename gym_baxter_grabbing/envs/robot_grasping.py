@@ -8,7 +8,8 @@ class RobotGrasping(gym.Env):
 
     def __init__(self, display=False, obj='cube', random_obj=False, pos_cam=[1.3, 180, -40],
                  gripper_display=False, steps_to_roll=1, random_var=0.01, delta_pos=[0, 0]):
-        self.obj = obj
+        assert isinstance(obj, str), "obj must be a str"
+        self.obj = obj.strip()
         self.display = display
         self.random_obj = random_obj
         self.pos_cam = pos_cam
@@ -116,3 +117,5 @@ class RobotGrasping(gym.Env):
 
     def close(self):
         p.disconnect()
+    def get_action(self):
+        return None

@@ -107,8 +107,8 @@ def setMotorsIds(bodyId, joint_ids, jointPoses):
     jointPoses : [float] * numDofs
     """
 
+    #p.setJointMotorControlArray(bodyIndex=bodyId, jointIndices=joint_ids, controlMode=p.POSITION_CONTROL, targetPositions=jointPoses) # doesn't work
     for i, id in enumerate(joint_ids):
-
         p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=id, controlMode=p.POSITION_CONTROL,
                                 targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=0.5)
 
@@ -126,19 +126,10 @@ def getJointStates(bodyId, includeFixed=False):
 
     """
 
-    states = []
-
-    numJoints = p.getNumJoints(bodyId)
-    # loop through all joints
-    for i in range(numJoints):
-        jointInfo = p.getJointInfo(bodyId, i)
-        if includeFixed or jointInfo[3] > -1:
-            # print(jointInfo[0], jointInfo[1], jointInfo[2], jointInfo[3], jointInfo[8:10])
-            # jointInfo[3] > -1 means that the joint is not fixed
-            joint_state = p.getJointState(bodyId, i)[0]
-            states.append(joint_state)
-
-    return states
+    valid = [i for i in range(p.getNumJoints(bodyId)) if includeFixed or p.getJointInfo(bodyId, i)[3] > -1]
+    # jointInfo[3] > -1 means that the joint is not fixed
+    # state[0] is the joint position
+    return [state[0] for state in p.getJointStates(bodyId, valid)]
 
 
 class BaxterGrasping(RobotGrasping):
@@ -147,17 +138,19 @@ class BaxterGrasping(RobotGrasping):
                  steps_to_roll=1, mode='joints_space', y_pose=0.12, random_var=0.01):
         self.y_pos = y_pose
         self.mode = mode
+        if mode == 'joints_space':
+            self.joints_id = [34, 35, 36, 37, 38, 40, 41, 49, 51]
+            self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]
+            self.n_joints = len(self.joints_id)
+            
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.2, 180, -40],
                          gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
+                         
         self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.robot_id,
                                                                                               includeFixed=False)
         # much simpler and faster (we want a linear function)
         self.interp_grip = lambda a: (a + 1) * 0.010416
 
-        if mode == 'joints_space':
-            self.joints_id = [34, 35, 36, 37, 38, 40, 41, 49, 51]
-            self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]
-            self.n_joints = len(self.joints_id)
 
     def setup_world(self, initialSimSteps=100):
 
@@ -173,18 +166,19 @@ class BaxterGrasping(RobotGrasping):
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
         path_baxter = os.path.join(Path(__file__).parent,
                                    'robots/baxter_common/baxter_description/urdf/toms_baxter.urdf')
-        robot_id = p.loadURDF(path_baxter,
-                              useFixedBase=False, flags=urdf_flags)
-        p.resetBasePositionAndOrientation(robot_id, [0, -0.8, 0.0], [0., 0., -1., -1.])
+        # z offset to make baxter touch the floor z=1 is about -.074830m in pybullet
+        robot_id = p.loadURDF(path_baxter, basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=True, flags=urdf_flags)
+        #p.resetBasePositionAndOrientation(robot_id, [0, -0.8, -.074830], [0., 0., -1., -1.])
 
-        path = os.path.join(Path(__file__).parent, "contact_points_baxter.txt")
+        """path = os.path.join(Path(__file__).parent, "contact_points_baxter.txt")
         with open(path) as json_file:
-            data = json.load(json_file)
+            data = json.load(json_file)"""
 
-        for contact_point in data:
-            p.setCollisionFilterPair(robot_id, robot_id, contact_point[0], contact_point[1], 0)
+        for contact_point in [[49, 51], [38, 53], [27, 29], [16, 31], [1, 10], [1, 7], [1, 5], [0, 10], [0, 7], [0, 5], [0, 1], [40, 53], [37, 54], [34, 36], [18, 31], [15, 32], [12, 14], [35, 2], [34, 2], [14, 2], [13, 2], [12, 2], [2, 7], [1, 2], [0, 2], [41, 53], [36, 2], [34, 54], [54, 2], [50, 55], [38, 54], [1, 53], [1, 38], [1, 37], [16, 32], [19,31], [49,52], [50,51], [50,52]]:
+            p.setCollisionFilterPair(robot_id, robot_id, contact_point[0], contact_point[1], enableCollision=0)
 
         # table robot part shapes
+        """
         t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.025])
         t_body_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.025], rgbaColor=[0.3, 0.3, 0, 1])
 
@@ -215,7 +209,7 @@ class BaxterGrasping(RobotGrasping):
         axis = [[1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1]]
 
         # drop the body in the scene at the following body coordinates
-        basePosition = [0, 0.4, 0]
+        basePosition = [0, 0.4, -0.4]
         baseOrientation = [0, 0, 0, 1]
         # main function that creates the table
         p.createMultiBody(body_Mass, t_body, visualShapeId, basePosition, baseOrientation,
@@ -229,96 +223,90 @@ class BaxterGrasping(RobotGrasping):
                           linkParentIndices=indices,
                           linkJointTypes=jointTypes,
                           linkJointAxis=axis)
+        """
+        h = 0.75 # total height of the table
+        # table is about 62.5cm tall and the z position of the table is located at the very bottom, I don't know why it floats
+        self.table_id = p.loadURDF("table/table.urdf", basePosition=[0, 0.4, -1+(h-0.625)], baseOrientation=[0,0,0,1], useFixedBase=False)
 
         # grab relevant joint IDs
         end_effector_id = 48  # (left gripper left finger)
 
         # set gravity
         p.setGravity(0., 0., -9.81)
+        
+        for i,v in zip([34, 35, 36, 37, 38, 40, 41,  12, 13, 14, 15, 16, 18, 19], [-0.08, -1.0, -1.19, 1.94, 0.67, 1.03, -0.50,  0.08, -1.0,  1.19, 1.94, -0.67, 1.03, 0.50]):
+            p.resetJointState(robot_id, i, targetValue=v) # put baxter in untuck position
+        
+        
+        """ # set maximum velocity and force, doesn't work
+        for i in [34, 35, 36, 37, 38, 40, 41, 49, 51]:#range(p.getNumJoints(robot_id)):
+            if p.getJointInfo(robot_id, i)[3]>-1:
+                p.changeDynamics(robot_id, i, maxJointVelocity=0.5, jointLimitForce=MAX_FORCE)"""
 
-        # let the world run for a bit
-        for _ in range(initialSimSteps):
-            p.stepSimulation()
+            
+        pos = [0, 0.1, 0]
+        pos[0] += self.delta_pos[0]
+        pos[1] += self.delta_pos[1]
+        if self.random_obj:
+            pos[0] = pos[0] + random.gauss(0, self.random_var)
+            pos[1] = pos[1] + random.gauss(0, self.random_var)
 
         # create object to grab
-        if self.obj == 'cube':
+        if self.obj == 'cuboid':
             w = 0.023
             le = 0.05
             height = 0.108
             col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[le, w, height])
             viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[le, w, height], rgbaColor=[1, 0, 0, 1])
             obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-            pos = [0, self.y_pos, -0.05]
-            pos[1] += self.delta_pos[0]
-            pos[2] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
-        if self.obj == 'cylinder':
+            
+        elif self.obj == 'cube':
+            w = 0.054 # length of one edge in m
+            obj_to_grab_id = p.loadURDF("cube_small.urdf", pos, globalScaling=w/0.05) # cube_small is a 5cm cube
+        elif self.obj == 'sphere':
+            d = 0.055 # diameter in m
+            obj_to_grab_id = p.loadURDF("sphere_small.urdf", pos, globalScaling=d/0.06) # sphere_small is a 6cm diameter sphere
+            p.changeDynamics(obj_to_grab_id, -1, rollingFriction=1e-6, spinningFriction=1e-6) # allow the sphere to roll
+
+        elif self.obj == 'cylinder':
             r = 0.032
             le = 0.15
             col_id = p.createCollisionShape(p.GEOM_CYLINDER, radius=r, height=le)
             viz_id = p.createVisualShape(p.GEOM_CYLINDER, radius=r, length=le, rgbaColor=[1, 0, 0, 1])
             obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-            pos = [0, self.y_pos, -0.1]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
 
-        if self.obj == 'cylinder_r':
+        elif self.obj == 'cylinder_r':
             r = 0.021
             le = 0.22
             col_id = p.createCollisionShape(p.GEOM_CYLINDER, radius=r, height=le)
             viz_id = p.createVisualShape(p.GEOM_CYLINDER, radius=r, length=le, rgbaColor=[1, 0, 0, 1])
             obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-            pos = [0, self.y_pos, -0.1]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
 
-        if self.obj == 'cup':
-            path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
-            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-            pos = [0, self.y_pos, -0.05]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
-            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=1)
-        if self.obj == 'deer':
-            path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
-            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-            pos = [0, 0.1, -0.05]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
-            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=0.7)
-        if self.obj == 'glass':
-            path = os.path.join(Path(__file__).parent, "glass_urdf.urdf")
-            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-            pos = [0, 0.1, -0.1]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
-            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation, globalScaling=0.8)
 
+        elif self.obj[-5:] == '.urdf':
+            path = os.path.join(Path(__file__).parent, "objects", self.obj)
+            try:
+                obj_to_grab_id = p.loadURDF(path, pos) # the scale is set in the urdf file
+            except p.error as e:
+                raise p.error(f"{e}: "+path)
+                
+        else:
+            raise ValueError("Unrecognized object: "+self.obj)
+            
+        
+            
         # change friction  of object
         p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
         self.robot_id = robot_id
         self.end_effector_id = end_effector_id
         self.obj_id = obj_to_grab_id
+        
+		# let the world run for a bit
+        for _ in range(initialSimSteps):
+            p.stepSimulation()
 
     def actuate(self):
 
@@ -370,7 +358,7 @@ class BaxterGrasping(RobotGrasping):
     
     def compute_self_contact(self):
         
-        self_contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id)
+        self_contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id) + p.getContactPoints(bodyA=self.robot_id, bodyB=self.table_id)
         self.info['self contact_points'] = self_contact_points
 
     def compute_grip_info(self):
@@ -379,3 +367,12 @@ class BaxterGrasping(RobotGrasping):
             self.info['closed gripper'] = False
         if self.joint_poses[-1] > 0.0003 or self.joint_poses[-1] < -0.0003:
             self.info['closed gripper'] = False
+
+    def get_action(self):
+        positions = [0]*(self.n_joints-1)
+        for i,j in enumerate(self.joints_id[:-1]):
+            pos = p.getJointState(self.robot_id, j)[0]
+            low = self.lowerLimits[self.ids_in_ranges[i]]
+            high = self.upperLimits[self.ids_in_ranges[i]]
+            positions[i] = 2*(pos-high)/(high-low) + 1
+        return positions

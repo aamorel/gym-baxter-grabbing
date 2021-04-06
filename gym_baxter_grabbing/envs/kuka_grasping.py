@@ -142,7 +142,7 @@ class KukaGrasping(RobotGrasping):
 
         p.resetBasePositionAndOrientation(kuka_id, [-0.1, -0.5, -0.5], [0., 0., 0., 1.])
 
-        # table robot part shapes
+        """# table robot part shapes
         t_body = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1])
         t_body_v = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.7, 0.7, 0.1], rgbaColor=[0.3, 0.3, 0, 1])
 
@@ -187,60 +187,42 @@ class KukaGrasping(RobotGrasping):
                           linkParentIndices=indices,
                           linkJointTypes=jointTypes,
                           linkJointAxis=axis)
-
+        """
+        h = 0.8 # total height of the table
+        # table is about 62.5cm tall and the z position of the table is located at the very bottom, I don't know why it floats
+        self.table_id = p.loadURDF("table/table.urdf", basePosition=[0, 0.4, -1+(h-0.625)], baseOrientation=[0,0,0,1], useFixedBase=False)
         # set gravity
         p.setGravity(0., 0., -9.81)
 
         # let the world run for a bit
-        for _ in range(initialSimSteps):
-            p.stepSimulation()
+        #for _ in range(initialSimSteps):
+            #p.stepSimulation()
+            
+        pos = [0, 0.1, 0]
+        pos[0] += self.delta_pos[0]
+        pos[1] += self.delta_pos[1]
+        if self.random_obj:
+            pos[0] = pos[0] + random.gauss(0, self.random_var)
+            pos[1] = pos[1] + random.gauss(0, self.random_var)
 
         # create object to grab
-        if self.obj == 'cube':
+        if self.obj == 'cuboid':
             square_base = 0.03
             height = 0.08
             col_id = p.createCollisionShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height])
-            viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height],
-                                         rgbaColor=[1, 0, 0, 1])
+            viz_id = p.createVisualShape(p.GEOM_BOX, halfExtents=[square_base, square_base, height], rgbaColor=[1, 0, 0, 1])
             obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-            pos = [0, 0.1, -0.05]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
             p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
-        if self.obj == 'cup':
-            path = os.path.join(Path(__file__).parent, "cup_urdf.urdf")
-            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-            pos = [0, 0.1, -0.05]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
-            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
-
-        if self.obj == 'deer':
-            path = os.path.join(Path(__file__).parent, "deer_urdf.urdf")
-            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-            pos = [0, 0.1, -0.05]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
-            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
-        if self.obj == 'glass':
-            path = os.path.join(Path(__file__).parent, "glass_urdf.urdf")
-            cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-            pos = [0, 0.2, -0.05]
-            pos[0] += self.delta_pos[0]
-            pos[1] += self.delta_pos[1]
-            if self.random_obj:
-                pos[0] = pos[0] + random.gauss(0, self.random_var)
-                pos[1] = pos[1] + random.gauss(0, self.random_var)
-            obj_to_grab_id = p.loadURDF(path, pos, cubeStartOrientation)
+        
+        elif self.obj[-5:] == '.urdf':
+            path = os.path.join(Path(__file__).parent, "objects", self.obj)
+            try:
+                obj_to_grab_id = p.loadURDF(path, pos) # the scale is set in the urdf file
+            except p.error as e:
+                raise p.error(f"{e}: "+path)
+                
+        else:
+            raise ValueError("Unrecognized object: "+self.obj)
         
         # change friction  of object
         p.changeDynamics(obj_to_grab_id, -1, lateralFriction=1)
