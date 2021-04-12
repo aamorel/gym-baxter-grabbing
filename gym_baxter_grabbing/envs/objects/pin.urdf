@@ -28,5 +28,7 @@
       </geometry>
     </collision>
   </link>
+  <!--specify baxter's configuration for grasping-->
+  <baxter finger="extended_narrow" slot="2" tip="basic_soft"/>
 </robot>
 

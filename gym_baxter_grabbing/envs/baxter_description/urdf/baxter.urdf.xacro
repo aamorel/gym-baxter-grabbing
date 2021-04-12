@@ -4,21 +4,21 @@
   <xacro:arg name="gazebo" default="false"/>
   <xacro:arg name="pedestal" default="true"/>
   <!-- Baxter Base URDF -->
-  <xacro:include filename="$(find baxter_description)/urdf/baxter_base/baxter_base.urdf.xacro">
+  <xacro:include filename="baxter_base/baxter_base.urdf.xacro">
     <xacro:arg name="gazebo" value="${gazebo}"/>
   </xacro:include>
 
   <!-- Baxter Pedestal -->
   <xacro:if value="$(arg pedestal)">
-    <xacro:include filename="$(find baxter_description)/urdf/pedestal/pedestal.xacro">
+    <xacro:include filename="pedestal/pedestal.xacro">
       <xacro:arg name="gazebo" value="${gazebo}"/>
     </xacro:include>
   </xacro:if>
 
   <!-- Left End Effector -->
-  <xacro:include filename="$(find baxter_description)/urdf/left_end_effector.urdf.xacro" />
+  <xacro:include filename="left_end_effector.urdf.xacro" />
 
   <!-- Right End Effector -->
-  <xacro:include filename="$(find baxter_description)/urdf/right_end_effector.urdf.xacro" />
+  <xacro:include filename="right_end_effector.urdf.xacro" />
 
 </robot>

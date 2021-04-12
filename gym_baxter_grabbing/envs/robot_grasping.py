@@ -2,6 +2,7 @@ import gym
 import pybullet as p
 from time import sleep
 import pybullet_data
+from pathlib import Path
 
 
 class RobotGrasping(gym.Env):

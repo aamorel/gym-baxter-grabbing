@@ -6,6 +6,8 @@ from pathlib import Path
 import pyquaternion as pyq
 from gym_baxter_grabbing.envs.robot_grasping import RobotGrasping
 import json
+import xml.etree.ElementTree as ET
+from .xacro import _process
 
 MAX_FORCE = 100
 
@@ -135,7 +137,9 @@ def getJointStates(bodyId, includeFixed=False):
 class BaxterGrasping(RobotGrasping):
 
     def __init__(self, display=False, obj='cube', random_obj=False, delta_pos=[0, 0],
-                 steps_to_roll=1, mode='joints_space', y_pose=0.12, random_var=0.01):
+                 steps_to_roll=1, mode='joints_space', y_pose=0.12, random_var=0.01,
+                 finger="extended_narrow", slot=3, tip="basic_soft", grasp="inner"):
+        
         self.y_pos = y_pose
         self.mode = mode
         if mode == 'joints_space':
@@ -143,11 +147,36 @@ class BaxterGrasping(RobotGrasping):
             self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]
             self.n_joints = len(self.joints_id)
             
+        obj = obj.strip()
+        cwd = Path(__file__).parent
+        if obj[-5:]==".urdf":
+            baxtertag = ET.parse(cwd/'objects'/obj).findall("baxter")
+            if len(baxtertag)>0: # if the baxter tag is specified in the urdf of the object like <baxter finger="extended_wide" slot="2" tip="basic_soft"/>, arguments in init will be overwritten
+                baxtertag = baxtertag[0]
+                finger = baxtertag.get('finger') or finger
+                slot = int(baxtertag.get('slot') or slot)
+                tip = baxtertag.get('tip') or tip
+                grasp = baxtertag.get('grasp') or grasp
+        if finger not in {"extended_narrow", "extended_wide", "standard_narrow", "standard_wide"}:
+            raise NameError(f"The finger value in the baxter tag in {obj} must be either: extended_narrow, extended_wide, standard_narrow, standard_wide")
+        elif tip not in {"basic_hard", "basic_soft", "paddle", "half_round"}:
+            raise NameError(f"The tip value in the baxter tag in {obj} must be either: basic_hard, basic_soft, paddle, half_round")
+        elif grasp not in {"inner", "outer"}:
+            raise NameError(f"The grasp value in the baxter tag in {obj} must be either: inner, outer")
+        elif not 0<slot<5:
+            raise NameError(f"The slot value in the baxter tag in {obj} must be either: 1, 2, 3, 4")
+                    
+                    
+        urdf = Path(cwd/f"baxter_description/urdf/generated/{finger}_{slot}_{tip}_{grasp}.urdf")
+        urdf.parent.mkdir(exist_ok=True)
+        if not urdf.is_file(): # create the file if doesn't exist
+            _process(cwd/"baxter_description/urdf/baxter_symmetric.xacro", dict(output=urdf, just_deps=False, xacro_ns=True, verbosity=1, mappings={'finger':finger, "slot":str(slot), 'tip':tip+"_tip", "grasp":grasp})) # convert xacro to urdf
+        self.baxter_urdf_file = str(urdf)
+            
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.2, 180, -40],
                          gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
                          
-        self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.robot_id,
-                                                                                              includeFixed=False)
+        self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses = getJointRanges(self.robot_id, includeFixed=False)
         # much simpler and faster (we want a linear function)
         self.interp_grip = lambda a: (a + 1) * 0.010416
 
@@ -164,10 +193,9 @@ class BaxterGrasping(RobotGrasping):
 
         # load Baxter
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
-        path_baxter = os.path.join(Path(__file__).parent,
-                                   'robots/baxter_common/baxter_description/urdf/toms_baxter.urdf')
+        #self.baxter_urdf_file = os.path.join(Path(__file__).parent, 'robots/baxter_common/baxter_description/urdf/toms_baxter.urdf')
         # z offset to make baxter touch the floor z=1 is about -.074830m in pybullet
-        robot_id = p.loadURDF(path_baxter, basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=True, flags=urdf_flags)
+        robot_id = p.loadURDF(self.baxter_urdf_file, basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=True, flags=urdf_flags)
         #p.resetBasePositionAndOrientation(robot_id, [0, -0.8, -.074830], [0., 0., -1., -1.])
 
         """path = os.path.join(Path(__file__).parent, "contact_points_baxter.txt")
@@ -358,7 +386,7 @@ class BaxterGrasping(RobotGrasping):
     
     def compute_self_contact(self):
         
-        self_contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id) + p.getContactPoints(bodyA=self.robot_id, bodyB=self.table_id)
+        self_contact_points = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id)# + p.getContactPoints(bodyA=self.robot_id, bodyB=self.table_id)
         self.info['self contact_points'] = self_contact_points
 
     def compute_grip_info(self):
