@@ -252,7 +252,7 @@ class BaxterGrasping(RobotGrasping):
                           linkJointTypes=jointTypes,
                           linkJointAxis=axis)
         """
-        h = 0.75 # total height of the table
+        h = 0.76 # total height of the table
         # table is about 62.5cm tall and the z position of the table is located at the very bottom, I don't know why it floats
         self.table_id = p.loadURDF("table/table.urdf", basePosition=[0, 0.4, -1+(h-0.625)], baseOrientation=[0,0,0,1], useFixedBase=False)
 
