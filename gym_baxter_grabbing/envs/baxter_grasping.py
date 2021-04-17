@@ -112,7 +112,7 @@ def setMotorsIds(bodyId, joint_ids, jointPoses):
     #p.setJointMotorControlArray(bodyIndex=bodyId, jointIndices=joint_ids, controlMode=p.POSITION_CONTROL, targetPositions=jointPoses) # doesn't work
     for i, id in enumerate(joint_ids):
         p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=id, controlMode=p.POSITION_CONTROL,
-                                targetPosition=jointPoses[i], force=MAX_FORCE, maxVelocity=0.5)
+                                targetPosition=jointPoses[i], maxVelocity=0.5)
 
 
 def getJointStates(bodyId, includeFixed=False):
