@@ -1,0 +1,105 @@
+<?xml version="1.0" ?>
+<robot name="crustcrawler" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- kinect with all frames as defined in turtlebot -->
+   <joint name="camera_rgb_joint" type="fixed">
+      <origin xyz="0 0.0 0" rpy="0 0 0"/>
+      <parent link="camera_link"/>
+      <child link="camera_rgb_frame" />
+  </joint>
+  <link name="camera_rgb_frame"/>
+  <joint name="camera_rgb_optical_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="-1.5707963267948966 0 -1.5707963267948966" />
+      <parent link="camera_rgb_frame" />
+      <child link="camera_rgb_optical_frame" />
+  </joint>
+  <link name="camera_rgb_optical_frame"/>
+  <joint name="kinect_joint" type="fixed">
+      <origin xyz="1.5 0.0 0.813" rpy="0 0.77 3.14"/>
+      <parent link="base"/>
+      <child link="camera_link"/>
+  </joint>  
+  <link name="camera_link">
+      <visual>
+       <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+         <mesh filename="package://crustcrawler_description/meshes/sensors/kinect.dae"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.07271 0.27794 0.073"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.564" />
+        <origin xyz="0 0 0" />
+        <inertia ixx="0.003881243" ixy="0.0" ixz="0.0"
+                 iyy="0.000498940" iyz="0.0"
+                 izz="0.003879257" />
+      </inertial>
+  </link>
+  <!-- The fixed joints & links below are usually published by static_transformers launched by the OpenNi launch 
+         files. However, for Gazebo simulation we need them, so we add them here.
+         (Hence, don't publish them additionally!) -->
+  <joint name="camera_depth_joint" type="fixed">
+    <origin xyz="0 0.0 0" rpy="0 0 0" />
+    <parent link="camera_rgb_frame" />
+    <child link="camera_depth_frame" />
+  </joint>
+  <link name="camera_depth_frame"/>
+  <joint name="camera_depth_optical_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="-1.5707963267948966 0 -1.5707963267948966" />
+    <parent link="camera_depth_frame" />
+    <child link="camera_depth_optical_frame" />
+  </joint>
+  <link name="camera_depth_optical_frame"/>
+
+<!-- Microsoft Kinect / ASUS Xtion PRO Live for simulation -->
+    <gazebo reference="camera_link">  
+      <sensor type="depth" name="camera">
+        <always_on>true</always_on>
+        <update_rate>20.0</update_rate>
+        <camera>
+          <horizontal_fov>1.05</horizontal_fov>
+          <image>
+            <format>B8G8R8</format>
+            <width>640</width>
+            <height>480</height>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>8.0</far>
+          </clip>
+        </camera>
+        <plugin name="kinect_camera_controller" filename="libgazebo_ros_openni_kinect.so">
+          <baseline>0.2</baseline>
+          <alwaysOn>true</alwaysOn>
+          <updateRate>10</updateRate>
+          <cameraName>camera</cameraName>
+          <imageTopicName>rgb/image_rect_color</imageTopicName>
+          <depthImageTopicName>depth_registered/sw_registered/image_rect</depthImageTopicName>
+          <pointCloudTopicName>depth_registered/sw_registered/points</pointCloudTopicName>
+          <cameraInfoTopicName>rgb/camera_info</cameraInfoTopicName>
+          <depthImageCameraInfoTopicName>depth_registered/sw_registered/camera_info</depthImageCameraInfoTopicName>
+          <frameName>camera_depth_optical_frame</frameName>
+          <pointCloudCutoff>0.5</pointCloudCutoff>
+          <distortionK1>0.00000001</distortionK1>
+          <distortionK2>0.00000001</distortionK2>
+          <distortionK3>0.00000001</distortionK3>
+          <distortionT1>0.00000001</distortionT1>
+          <distortionT2>0.00000001</distortionT2>
+          <CxPrime>0</CxPrime>
+          <Cx>0</Cx>
+          <Cy>0</Cy>
+          <focalLength>0</focalLength>
+          <hackBaseline>0</hackBaseline>
+        </plugin>
+      </sensor>
+    </gazebo>
+
+  <!-- Crustcrawler Base URDF -->
+  <xacro:include filename="$(find crustcrawler_description)/urdf/crustcrawler_arm_test_2.xacro"/>
+
+</robot>

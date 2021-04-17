@@ -69,7 +69,7 @@ class PepperGrasping(RobotGrasping):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
 
         # load plane
-        p.loadURDF("plane.urdf", [0, 0, -1], useFixedBase=True)
+        self.plane_id = p.loadURDF("plane.urdf", [0, 0, -1], useFixedBase=True)
 
         pepper = q.PepperVirtual()
 

@@ -1,0 +1,664 @@
+<?xml version="1.0"?>
+<robot name="crustcrawler" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Constants for robot dimensions -->
+  <xacro:property name="PI" value="3.1415926535897931"/>
+  <xacro:property name="mass_1" value="0.125" /> 
+  <xacro:property name="mass_2" value="0.425" /> 
+  <xacro:property name="mass_3" value="0.01" /> 
+  <xacro:property name="mass_4" value="0.037" />  
+  <xacro:property name="mass_5" value="0.196" />   
+  <xacro:property name="mass_6" value="0.023" />    
+  <xacro:property name="mass_7" value="0.187" />    
+  <xacro:property name="mass_8" value="0.096" />    
+  <xacro:property name="mass_9" value="0.128" />    
+  <xacro:property name="mass_10" value="0.15" />    
+  <xacro:property name="mass_11" value="0.02" />
+
+  <xacro:property name="width_1" value="0.14" /> 
+  <xacro:property name="width_2" value="0.03" /> 
+  <xacro:property name="width_3" value="0.03" /> 
+  <xacro:property name="width_4" value="0.032" />  
+  <xacro:property name="width_5" value="0.028" />   
+  <xacro:property name="width_6" value="0.03" />   
+  <xacro:property name="width_7" value="0.05" />    
+  <xacro:property name="width_8" value="0.024" />     
+  <xacro:property name="width_9" value="0.05" />     
+  <xacro:property name="width_10" value="0.036" />     
+  <xacro:property name="width_11" value="0.04" /> 
+
+  <xacro:property name="length_2" value="0.115" /> 
+  <xacro:property name="length_3" value="0.13" /> 
+  <xacro:property name="length_4" value="0.05" />
+  <xacro:property name="length_5" value="0.045" /> 
+  <xacro:property name="length_6" value="0.05" />  
+  <xacro:property name="length_7" value="0.06" />   
+  <xacro:property name="length_8" value="0.04" />    
+  <xacro:property name="length_9" value="0.05" />    
+  <xacro:property name="length_10" value="0.06" />    
+  <xacro:property name="length_11" value="0.044" />  
+
+  <xacro:property name="height_1" value="0.06" /> 
+  <xacro:property name="height_2" value="0.07" /> 
+  <xacro:property name="height_3" value="0.03" />  
+  <xacro:property name="height_4" value="0.126" />   
+  <xacro:property name="height_5" value="0.063" />    
+  <xacro:property name="height_6" value="0.063" />     
+  <xacro:property name="height_7" value="0.048" />      
+  <xacro:property name="height_8" value="0.054" />      
+  <xacro:property name="height_9" value="0.055" />      
+  <xacro:property name="height_10" value="0.053" />      
+  <xacro:property name="height_11" value="0.11" /> 
+    
+    <xacro:include filename="$(find crustcrawler_description)/urdf/materials.urdf.xacro" />
+    <xacro:include filename="$(find crustcrawler_description)/urdf/crustcrawler.gazebo" />
+    
+        <!-- ****** JOINT DEFINITIONS ****** -->   
+        <link name="world"/> 
+		<link name="base"/>
+        <link name="the_gripper">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="0.0001"/>
+        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0.0"/>
+      </inertial>
+    </link>
+        <!-- Arm's base joint -->		
+	        <joint name="base_joint" type="fixed">
+	            <origin xyz="0 0 0" rpy="0 0 0" />
+	            <parent link="world"/> 
+	            <child link="base"/>
+	        </joint>   
+
+	        <joint name="arm_base_joint" type="fixed">
+	            <parent link="base"/> 
+	            <child link="link_joint_1"/>
+	        </joint>   
+        
+        <!-- joint 1 -->
+        <joint name="joint_1" type="revolute" >
+            <origin xyz="0 0 0.055" rpy="0 0 0" />
+            <parent link="link_joint_1" />
+            <child link="link_joint_2"/>
+            
+            <axis xyz="0 0 1"/>
+            <limit  lower="-1.8" upper="2.3" effort="6.0" velocity="2.0" />
+        </joint>
+
+        <!-- joint 2 -->
+        <joint name="joint_2" type="revolute" >
+            <origin xyz="0 -0.06 0.06" rpy="0 0 0" />
+            <parent link="link_joint_2" />
+            <child link="connector_1"/>
+            
+            <axis xyz="0 1 0"/>
+            <limit  lower="-1.6" upper="1.6" effort="15" velocity="2.0" />
+        </joint>
+
+        <!-- Fixed joint between connector_1 and the first girder -->
+        <joint name="connector_1_girder_1_joint" type="fixed">
+            <origin xyz="-0.0153 0.06 0.036" rpy="0 0 0" />
+            <parent link="connector_1"/>
+            <child link="link_girder_1"/>
+        </joint>
+
+        <!-- Fixed joint between first girder joint_3 -->
+        <joint name="girder_1_joint_3_joint" type="fixed">
+            <origin xyz="0.0153 0 0.126" rpy="0 0 0" />
+            <parent link="link_girder_1"/>
+            <child link="link_joint_3"/>
+        </joint>
+
+        <!-- joint 3 -->
+        <joint name="joint_3" type="revolute" >
+            <origin xyz="0 -0.025 0.056" rpy="0 0 0" />
+            <parent link="link_joint_3" />
+            <child link="connector_2"/>
+            
+            <axis xyz="0 -1 0"/>
+            <limit  lower="-1.9" upper="1.9" effort="8.4" velocity="2.0" />
+        </joint>
+
+        <!-- Fixed joint between connector_2 and link_girder_2 -->
+        <joint name="connector_2_girder_2_joint" type="fixed">
+            <origin xyz="-0.0153 0.025 0.036" rpy="0 0 0" />
+            <parent link="connector_2"/>
+            <child link="link_girder_2"/>
+        </joint>
+
+        <!-- Fixed joint between second girder joint_4 -->
+        <joint name="girder_2_joint_4_joint" type="fixed">
+            <origin xyz="0.0153 0 0.0635" rpy="0 0 0" />
+            <parent link="link_girder_2"/>
+            <child link="link_joint_4"/>
+        </joint>
+
+        <!-- joint 4 -->
+        <joint name="joint_4" type="revolute" >
+            <origin xyz="0 0 0.06" rpy="0 0 0" />
+            <parent link="link_joint_4" />
+            <child link="link_joint_5"/>
+            
+            <axis xyz="0 0 1"/>
+            <limit  lower="-3.0" upper="3.0" effort="6.0" velocity="2.0" />
+        </joint>
+
+        <!-- joint 5 -->
+        <joint name="joint_5" type="revolute" >
+            <origin xyz="0 -0.025 0.044" rpy="0 0 0" />
+            <parent link="link_joint_5" />
+            <child link="connector_3"/>
+            
+            <axis xyz="0 -1 0"/>
+            <limit  lower="-1.6" upper="1.6" effort="2.5" velocity="2.0" />
+        </joint>
+
+        <!-- Fixed joint between connector_3 and joint_6 -->
+        <joint name="connector_3_joint_6_joint" type="fixed">
+            <origin xyz="0 0.025 0.029" rpy="0 0 0" />
+            <parent link="connector_3"/>
+            <child link="link_joint_6"/>
+        </joint>
+
+        <!-- joint 6 -->
+        <joint name="joint_6" type="revolute" >
+            <origin xyz="0 0 0.053" rpy="0 0 0" />
+            <parent link="link_joint_6" />
+            <child link="link_gripper_base"/>
+            
+            <axis xyz="0 0 1"/>
+            <limit  lower="-3.0" upper="3.0" effort="2.5" velocity="2.0" />
+        </joint>
+
+        <!-- Gripper right finger joint -->
+        <joint name="right_finger_joint" type="revolute">
+            <origin xyz="0 -0.02 0.04" rpy="0 0 0" />
+            <parent link="link_gripper_base"/>
+            <child link="link_right_finger" />
+            
+            <axis xyz="1 0 0"/>
+            <!-- From 14 to -45 degrees -->
+            <limit  lower="-0.84" upper="0.84" effort="1.8" velocity="2.0" />
+        </joint>
+        
+        <!-- Gripper left finger joint -->
+        <joint name="left_finger_joint" type="revolute">
+            <origin xyz="0 0.02 0.04" rpy="0 0 0" />
+            <parent link="link_gripper_base"/>
+            <child link="link_left_finger" />
+            
+            <axis xyz="1 0 0"/>
+            <!-- From 14 to -45 degrees -->
+            <limit  lower="-0.84" upper="0.84" effort="1.8" velocity="2.0" />
+        </joint>
+
+        <joint name="crustcrawler_endpoint" type="fixed">
+      <origin rpy="0 0 0" xyz="0 0 0.13"/>
+      <parent link="link_gripper_base"/>
+      <child link="the_gripper"/>
+    </joint>
+
+
+        <!-- ****** LINK DEFINITIONS ****** -->      
+        <link name="link_joint_1">            
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_1.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_1.dae"/>
+                </geometry>
+            </collision>
+
+   
+		<inertial>
+      			<origin xyz="0 0 0.043" rpy="0 0 0"/>
+      <mass value="${mass_1}"/>
+      <inertia
+	  ixx="${mass_1 / 12.0 * (width_1*width_1 + height_1*height_1)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_1 / 12.0 * (height_1*height_1 + width_1*width_1)}" iyz="0.0"
+	  izz="${mass_1 / 12.0 * (width_1*width_1 + width_1*width_1)}"/>
+    		</inertial>
+        </link>
+
+        <link name="link_joint_2">
+            
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_2.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_2.dae"/>
+                </geometry>
+            </collision>
+
+   
+		<inertial>
+      			<origin xyz="0.112 0 0 " rpy="0 0 0"/>
+      <mass value="${mass_2}"/>
+      <inertia
+	  ixx="${mass_2 / 12.0 * (width_2*width_2 + height_2*height_2)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_2 / 12.0 * (height_2*height_2 + length_2*length_2)}" iyz="0.0"
+	  izz="${mass_2 / 12.0 * (width_2*width_2 + length_2*length_2)}"/>
+    		</inertial>
+        </link>
+
+        <link name="connector_1">
+            <visual>
+                <origin xyz="0 0.06 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/connecter_joint_2_girder_1.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0.06 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/connecter_joint_2_girder_1.dae"/>
+                </geometry>
+            </collision>
+
+    <inertial>
+      <origin xyz="0 0 ${height_3}" rpy="0 0 0"/>
+      <mass value="${mass_3}"/>
+      <inertia
+	  ixx="${mass_3 / 12.0 * (width_3*width_3 + height_3*height_3)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_3 / 12.0 * (height_3*height_3 + width_3*width_3)}" iyz="0.0"
+	  izz="${mass_3 / 12.0 * (width_3*width_3 + width_3*width_3)}"/>
+    </inertial>
+        </link>
+
+  <link name="link_girder_1">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/link_50.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/link_50.dae"/>
+                </geometry>
+            </collision>
+
+    
+		<inertial>
+      			<origin xyz="0.0785 0 0 " rpy="0 0 0"/>
+      <mass value="${mass_4}"/>
+      <inertia
+	  ixx="${mass_4 / 12.0 * (width_4*width_4 + height_4*height_4)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_4 / 12.0 * (height_4*height_4 + width_4*width_4)}" iyz="0.0"
+	  izz="${mass_4 / 12.0 * (width_4*width_4 + width_4*width_4)}"/>
+    		</inertial>
+        </link>
+
+        <link name="link_joint_3">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_3.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_3.dae"/>
+                </geometry>
+            </collision>
+
+    
+		<inertial>
+      			<origin xyz="0.0 0 0.039 " rpy="0 0 0"/>
+      <mass value="${mass_5}"/>
+      <inertia
+	  ixx="${mass_5 / 12.0 * (width_5*width_5 + height_5*height_5)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_5 / 12.0 * (height_5*height_5 + width_5*width_5)}" iyz="0.0"
+	  izz="${mass_5 / 12.0 * (width_5*width_5 + width_5*width_5)}"/>
+    		</inertial>
+        </link>
+
+        <link name="connector_2">
+            <visual>
+                <origin xyz="0 0.022 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/connecter_joint_3_girder_2.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0.022 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/connecter_joint_3_girder_2.dae"/>
+                </geometry>
+            </collision>
+
+    <inertial>
+      <origin xyz="0 0 ${height_3}" rpy="0 0 0"/>
+      <mass value="${mass_3}"/>
+      <inertia
+	  ixx="${mass_3 / 12.0 * (width_3*width_3 + height_3*height_3)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_3 / 12.0 * (height_3*height_3 + width_3*width_3)}" iyz="0.0"
+	  izz="${mass_3 / 12.0 * (width_3*width_3 + width_3*width_3)}"/>
+    </inertial>
+        </link>
+
+        <link name="link_girder_2">            
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/link_25.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/link_25.dae"/>
+                </geometry>
+            </collision>
+
+    
+		<inertial>
+      			<origin xyz="0.0325 0  0" rpy="0 0 0"/>
+      <mass value="${mass_6}"/>
+      <inertia
+	  ixx="${mass_6 / 12.0 * (width_6*width_6 + height_6*height_6)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_6 / 12.0 * (height_6*height_6 + width_6*width_6)}" iyz="0.0"
+	  izz="${mass_6 / 12.0 * (width_6*width_6 + width_6*width_6)}"/>
+    		</inertial>
+        </link>
+
+        <link name="link_joint_4">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_4.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_4.dae"/>
+                </geometry>
+            </collision>
+
+    
+		<inertial>
+      			<origin xyz="0.0325 0  0" rpy="0 0 0"/>
+      <mass value="${mass_7}"/>
+      <inertia
+	  ixx="${mass_7 / 12.0 * (width_7*width_7 + height_7*height_7)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_7 / 12.0 * (height_7*height_7 + length_7*length_7)}" iyz="0.0"
+	  izz="${mass_7 / 12.0 * (width_7*width_7 + length_7*length_7)}"/>
+    		</inertial>
+        </link>
+        
+        <link name="link_joint_5">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_5.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_5.dae"/>
+                </geometry>
+            </collision>
+
+    <inertial>
+      <origin xyz="0 0 ${height_8}" rpy="0 0 0"/>
+      <mass value="${mass_8}"/>
+      <inertia
+	  ixx="${mass_8 / 12.0 * (width_8*width_8 + height_8*height_8)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_8 / 12.0 * (height_8*height_8 + length_8*length_8)}" iyz="0.0"
+	  izz="${mass_8 / 12.0 * (width_8*width_8 + length_8*length_8)}"/>
+    </inertial>
+        </link>
+
+        <link name="connector_3">            
+            <visual>
+                <origin xyz="0 0.025 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/connecter_joint_5_joint_6.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0.025 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/connecter_joint_5_joint_6.dae"/>
+                </geometry>
+            </collision>
+
+    
+		<inertial>
+      			<origin xyz="0.0325 0  0" rpy="0 0 0"/>
+      <mass value="${mass_3}"/>
+      <inertia
+	  ixx="${mass_3 / 12.0 * (width_3*width_3 + height_3*height_3)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_3 / 12.0 * (height_3*height_3 + width_3*width_3)}" iyz="0.0"
+	  izz="${mass_3 / 12.0 * (width_3*width_3 + width_3*width_3)}"/>
+    		</inertial>
+        </link>
+        
+        <link name="link_joint_6">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_6.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/joint_6.dae"/>
+                </geometry>
+            </collision>
+
+    
+		<inertial>
+      			<origin xyz="0.0325 0  0" rpy="0 0 0"/>
+      <mass value="${mass_9}"/>
+      <inertia
+	  ixx="${mass_9 / 12.0 * (width_9*width_9 + height_9*height_9)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_9 / 12.0 * (height_9*height_9 + length_9*length_9)}" iyz="0.0"
+	  izz="${mass_9 / 12.0 * (width_9*width_9 + length_9*length_9)}"/>
+    		</inertial>
+        </link>
+
+        <link name="link_gripper_base">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/gripper_base.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/gripper_base.dae"/>
+                </geometry>
+            </collision>
+		<inertial>
+      			<origin xyz="0 0 0.035 " rpy="0 0 0"/>
+      <mass value="${mass_10}"/>
+      <inertia
+	  ixx="${mass_10 / 12.0 * (width_10*width_10 + height_10*height_10)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_10 / 12.0 * (height_10*height_10 + length_10*length_10)}" iyz="0.0"
+	  izz="${mass_10 / 12.0 * (width_10*width_10 + length_10*length_10)}"/>
+    		</inertial>
+        </link>
+
+        <link name="link_right_finger">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/arm_right_finger.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/arm_right_finger.dae"/>
+                </geometry>
+            </collision>
+
+    <inertial>
+      <origin xyz="0 0 ${height_11/2.0}" rpy="0 0 0"/>
+      <mass value="${mass_11}"/>
+      <inertia
+	  ixx="${mass_11 / 12.0 * (width_11*width_11 + height_11*height_11)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_11 / 12.0 * (height_11*height_11 + length_11*length_11)}" iyz="0.0"
+	  izz="${mass_11 / 12.0 * (width_11*width_11 + length_11*length_11)}"/>
+    </inertial>
+        </link>
+
+        <link name="link_left_finger">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/arm_left_finger.dae"/>
+                </geometry>
+            </visual>
+            
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://crustcrawler_description/meshes/collada/arm_left_finger.dae"/>
+                </geometry>
+            </collision>
+
+    <inertial>
+      <origin xyz="0 0 ${height_11/2.0}" rpy="0 0 0"/>
+      <mass value="${mass_11}"/>
+      <inertia
+	  ixx="${mass_11 / 12.0 * (width_11*width_11 + height_11*height_11)}" ixy="0.0" ixz="0.0"
+	  iyy="${mass_11 / 12.0 * (height_11*height_11 + length_11*length_11)}" iyz="0.0"
+	  izz="${mass_11 / 12.0 * (width_11*width_11 + length_11*length_11)}"/>
+    </inertial>
+        </link>
+
+  <transmission name="joint_1_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="joint_1">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="joint_1_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="joint_2_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="joint_2">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="joint_2_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="joint_3_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="joint_3">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="joint_3_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="joint_4_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="joint_4">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="joint_4_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="joint_5_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="joint_5">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="joint_5_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="joint_6_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="joint_6">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="joint_6_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="right_finger_joint_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="right_finger_joint">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="right_finger_joint_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="left_finger_joint_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="left_finger_joint">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="left_finger_joint_motor">
+      <!--hardwareInterface>EffortJointInterface</hardwareInterface-->
+      <hardwareInterface>PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+</robot>

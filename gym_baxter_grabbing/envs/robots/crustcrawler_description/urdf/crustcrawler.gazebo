@@ -1,0 +1,179 @@
+<?xml version="1.0"?>
+<robot name="crustcrawler" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+ <gazebo>
+   <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+     <robotNamespace>/crustcrawler</robotNamespace>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+   </plugin>
+ </gazebo>
+
+ <gazebo reference="joint_1">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+ <gazebo reference="joint_2">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+ <gazebo reference="joint_3">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+ <gazebo reference="joint_4">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+ <gazebo reference="joint_5">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+ <gazebo reference="joint_6">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+ <gazebo reference="right_finger_joint">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+ <gazebo reference="left_finger_joint">
+    <implicitSpringDamper>1</implicitSpringDamper>
+            <fudgeFactor value="0.5" />
+ </gazebo>
+
+
+     
+        <!-- ****** MATERIAL DEFINITIONS ****** -->
+        <gazebo reference="link_joint_1">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+        
+        <gazebo reference="link_joint_2">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="connector_1">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Red</material>
+        </gazebo>
+        
+        <gazebo reference="link_girder_1">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="link_joint_3">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="connector_2">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Red</material>
+        </gazebo>
+
+        <gazebo reference="link_girder_2">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="link_joint_4">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="link_joint_5">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="connector_3">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Red</material>
+        </gazebo>
+
+        <gazebo reference="link_joint_6">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="link_gripper_base">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Black</material>
+        </gazebo>
+
+        <gazebo reference="link_right_finger">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Grey</material>
+        </gazebo>
+
+        <gazebo reference="link_left_finger">
+            <turnGravityOff>true</turnGravityOff>
+            <mu1 value="500.0" />
+            <mu2 value="500.0" />
+            <kp value="1000000.0" />
+            <kd value="1.0" />
+          <material>Gazebo/Grey</material>
+        </gazebo>
+</robot>
