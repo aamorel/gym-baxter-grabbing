@@ -152,7 +152,7 @@ class BaxterGrasping(RobotGrasping):
         obj = obj.strip()
         cwd = Path(__file__).parent
         if obj not in {"cuboid", "cube", "sphere", "cylinder", "paper roll"}:
-            baxtertag = ET.parse(cwd/'objects'/obj.strip(".urdf")/f"{obj}.urdf").findall("baxter")
+            baxtertag = ET.parse(cwd/'objects'/obj/f"{obj}.urdf").findall("baxter")
             if len(baxtertag)>0: # if the baxter tag is specified in the urdf of the object like <baxter finger="extended_wide" slot="2" tip="basic_soft"/>, arguments in init will be overwritten
                 baxtertag = baxtertag[0]
                 finger = baxtertag.get('finger') or finger
