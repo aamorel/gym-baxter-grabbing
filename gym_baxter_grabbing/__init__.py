@@ -8,4 +8,4 @@ register(id='pepper_grasping-v0',
 
 register(id='kuka_grasping-v0',
          entry_point='gym_baxter_grabbing.envs:KukaGrasping',)
-register(id='crustcrawler-v0', entry_point='gym_baxter_grabbing.envs:CrustCrawler', max_episode_steps=200)
+register(id='crustcrawler-v0', entry_point='gym_baxter_grabbing.envs:CrustCrawler', max_episode_steps=2500)

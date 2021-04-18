@@ -60,7 +60,7 @@ class RobotGrasping(gym.Env):
         self.plane_id = p.loadURDF("plane.urdf", [0, 0, -1], useFixedBase=True)
 
         if table_height is not None:
-        # table is about 62.5cm tall and the z position of the table is located at the very bottom, I don't know why it floats
+        # table is about 62.5cm tall and the z position of the table is located at the very bottom, there is link with the ground (so it is static)
             self.table_id = p.loadURDF("table/table.urdf", basePosition=[0, 0.4, -1+(table_height-0.625)], baseOrientation=[0,0,0,1], useFixedBase=False)
 
         # set gravity
@@ -124,6 +124,7 @@ class RobotGrasping(gym.Env):
         pass
 
     def step(self, action):
+        self.info = {}
         self.action = action
         self.actuate()
 
@@ -141,7 +142,6 @@ class RobotGrasping(gym.Env):
         grip_pos = list(grip[0])  # x, y, z
         grip_orientation = list(grip[1])
 
-        self.info = {}
         self.compute_joint_poses()
         self.compute_grip_info()
 

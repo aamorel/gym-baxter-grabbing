@@ -6,7 +6,7 @@ from pathlib import Path
 import pyquaternion as pyq
 from gym_baxter_grabbing.envs.robot_grasping import RobotGrasping
 import xml.etree.ElementTree as ET
-from .xacro import _process
+from gym_baxter_grabbing.envs.xacro import _process
 
 
 
@@ -15,7 +15,7 @@ class CrustCrawler(RobotGrasping):
 
     def __init__(self, display=False, obj='cube', random_obj=False, delta_pos=[0, 0],
                  steps_to_roll=1, mode='joints_space', random_var=0.01,
-                 limit_scale=1):
+                 limit_scale=0.3):
         
 
         self.mode = mode
@@ -34,13 +34,6 @@ class CrustCrawler(RobotGrasping):
                          gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
         
         
-        self.joints_id = [i for i in range(p.getNumJoints(self.robot_id)) if p.getJointInfo(self.robot_id, i)[3]>-1]
-        self.n_joints = len(self.joints_id)
-        
-        lowerLimits, upperLimits = np.array([p.getJointInfo(self.robot_id, i)[8:10] for i in self.joints_id])
-        self.jointRanges = (upperLimits - lowerLimits).tolist()
-        self.lowerLimits, self.upperLimits = lowerLimits.tolist(), upperLimits.tolist()
-        self.restPoses = p.getJointStates(self.robot_id, self.joints_id) # the rest pose is the initial state
 
 
     def setup_world(self):
@@ -58,26 +51,41 @@ class CrustCrawler(RobotGrasping):
         else:
             obj = self.obj
 
-        super().setup_world(table_height=0.76, initial_position=[self.delta_pos[0], 0.12+self.delta_pos[1], 0], obj=obj)
+        h = 0.76
+        super().setup_world(table_height=h, initial_position=[self.delta_pos[0], 0.5+self.delta_pos[1], 0], obj=obj)
 
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
         # z offset to make baxter touch the floor z=1 is about -.074830m in pybullet
-        robot_id = p.loadURDF(self.crustcrawler_urdf_file, basePosition=[0, -0.8, 0], baseOrientation=[0,0,-1,-1], useFixedBase=True, flags=urdf_flags)
+        robot_id = p.loadURDF(self.crustcrawler_urdf_file, basePosition=[0, 0, h-1+1e-3], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=urdf_flags)
         self.robot_id = robot_id
         self.end_effector_id = 15
+        self.joints_id = [i for i in range(p.getNumJoints(self.robot_id)) if p.getJointInfo(self.robot_id, i)[3]>-1]
+        self.n_joints = len(self.joints_id)
+        
+        lowerLimits, upperLimits = np.array([p.getJointInfo(self.robot_id, i)[8:10] for i in self.joints_id]).T
+        self.jointRanges = (upperLimits - lowerLimits).tolist()
+        self.lowerLimits, self.upperLimits = lowerLimits.tolist(), upperLimits.tolist()
+        self.restPoses = p.getJointStates(self.robot_id, self.joints_id) # the rest pose is the initial state
+        self.maxVelocity = [p.getJointInfo(self.robot_id, i)[11] for i in self.joints_id]
+        self.maxForce = [p.getJointInfo(self.robot_id, i)[10] for i in self.joints_id]
 
-        #for contact_point in [[49, 51], [38, 53], [27, 29], [16, 31], [1, 10], [1, 7], [1, 5], [0, 10], [0, 7], [0, 5], [0, 1], [40, 53], [37, 54], [34, 36], [18, 31], [15, 32], [12, 14], [35, 2], [34, 2], [14, 2], [13, 2], [12, 2], [2, 7], [1, 2], [0, 2], [41, 53], [36, 2], [34, 54], [54, 2], [50, 55], [38, 54], [1, 53], [1, 38], [1, 37], [16, 32], [19,31], [49,52], [50,51], [50,52]]:
-            #p.setCollisionFilterPair(robot_id, robot_id, contact_point[0], contact_point[1], enableCollision=0)
+        for contact_point in [[13,14], [11,14], [11,13]]:
+            p.setCollisionFilterPair(robot_id, robot_id, contact_point[0], contact_point[1], enableCollision=0)
 
 
         #for i,v in zip([34, 35, 36, 37, 38, 40, 41,  12, 13, 14, 15, 16, 18, 19], [-0.08, -1.0, -1.19, 1.94, 0.67, 1.03, -0.50,  0.08, -1.0,  1.19, 1.94, -0.67, 1.03, 0.50]):
             #p.resetJointState(robot_id, i, targetValue=v) # put baxter in untuck position
             
-        for i in [25, 26, 27, 28, 29, 30, 47, 48, 49, 50, 51, 52]: # add collision margin to the gripper
-            p.changeDynamics(robot_id, i, collisionMargin=0.04)
-        for i in [28, 30, 50, 52]: # add friction to the finger tips
-            p.changeDynamics(robot_id, i, lateralFriction=1)
-
+        #for i in [25, 26, 27, 28, 29, 30, 47, 48, 49, 50, 51, 52]: # add collision margin to the gripper
+            #p.changeDynamics(robot_id, i, collisionMargin=0.04)
+        #for i in [28, 30, 50, 52]: # add friction to the finger tips
+            #p.changeDynamics(robot_id, i, lateralFriction=1)
+        
+        # set maximum velocity and force, doesn't work
+        for i, id in enumerate(self.joints_id):#range(p.getNumJoints(robot_id)):
+            #if p.getJointInfo(robot_id, i)[3]>-1:
+            p.changeDynamics(robot_id, id, maxJointVelocity=self.maxVelocity[i], jointLimitForce=self.maxForce[i])
+        
         
 
         
@@ -99,7 +107,7 @@ class CrustCrawler(RobotGrasping):
 
         elif isinstance(self.action, (list, tuple, np.ndarray)):
             # we want one action per joint (gripper is composed by 2 joints but considered as one)
-            assert len(self.action)==self.n_joints-1 and np.all(-1<=self.action<=1)
+            assert len(self.action)==self.n_joints-1 #and np.max(self.action)<=1 and np.min(self.action)>=-1
             self.info['closed gripper'] = self.action[-1]>0
             # add the command for the last gripper joint
             self.action = np.append(self.action, -self.action[-1])
@@ -112,12 +120,14 @@ class CrustCrawler(RobotGrasping):
         p.setJointMotorControlArray(bodyIndex=self.robot_id, jointIndices=self.joints_id, controlMode=p.POSITION_CONTROL, targetPositions=commands)
 
     def compute_joint_poses(self):
-        self.joint_poses = [state[0] for state in p.getJointStates(bodyId, self.joint_id)]
+        self.joint_poses = [state[0] for state in p.getJointStates(self.robot_id, self.joints_id)]
     
     def compute_self_contact(self):
         self.info['contact object table'] = p.getContactPoints(bodyA=self.obj_id, bodyB=self.table_id)
         self.info['self contact_points'] = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id)
         self.info['contact robot table'] =  p.getContactPoints(bodyA=self.robot_id, bodyB=self.table_id)
+        if len(self.info['self contact_points'])>0:
+            print(self.info['self contact_points'])
 
     def compute_grip_info(self):
         pass
@@ -133,9 +143,7 @@ class CrustCrawler(RobotGrasping):
         return positions
 
 if __name__ == "__main__": # testing
-	#import gym
-	#gym.register(id='crustcrawler-v0', entry_point='.:CrustCrawler', max_episode_steps=200)
-    env = CrustCrawler(display=True)#gym.make(".:crustcrawler-v0", display=True)
+    env = CrustCrawler(display=True)
     env.step([0,0,0,0,0,0,1])
     while True:
         p.stepSimulation()#o, r, eo, inf = env.step(None)
