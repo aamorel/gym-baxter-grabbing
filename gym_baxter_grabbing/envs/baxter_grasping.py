@@ -140,7 +140,7 @@ class BaxterGrasping(RobotGrasping):
 
     def __init__(self, display=False, obj='cube', random_obj=False, delta_pos=[0, 0],
                  steps_to_roll=1, mode='joints_space', y_pose=0.12, random_var=0.01,
-                 finger="extended_narrow", slot=3, tip="basic_soft", grasp="outer", limit_scale=0.13):
+                 finger="extended_narrow", slot=3, tip="basic_soft", grasp="inner", limit_scale=0.13):
         
         self.y_pos = y_pose
         self.mode = mode
@@ -276,8 +276,8 @@ class BaxterGrasping(RobotGrasping):
             # apply the commands
             #setMotorsIds(self.robot_id, self.joints_id, commands)
             #p.setJointMotorControlArray(bodyIndex=self.robot_id, jointIndices=self.joints_id, controlMode=p.POSITION_CONTROL, targetPositions=commands, forces=[self.maxForce[i] for i in self.ids_in_ranges])
-            for i, id in enumerate(self.joints_id):
-                p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=p.POSITION_CONTROL, targetPosition=commands[i], maxVelocity=self.maxVelocity[self.ids_in_ranges[i]], force=self.maxForce[self.ids_in_ranges[i]])
+            for id, command, id_in_ranges in zip(self.joints_id, commands, self.ids_in_ranges):
+                p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=p.POSITION_CONTROL, targetPosition=command, maxVelocity=self.maxVelocity[id_in_ranges], force=self.maxForce[id_in_ranges])
 
     def compute_joint_poses(self):
 

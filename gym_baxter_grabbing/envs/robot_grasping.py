@@ -80,9 +80,9 @@ class RobotGrasping(gym.Env):
                 p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
                 
             elif obj["shape"] == 'cube':
-                obj_to_grab_id = p.loadURDF("cube_small.urdf", pos, globalScaling=obj["unit"]/0.05) # cube_small is a 5cm cube
+                obj_to_grab_id = p.loadURDF("cube_small.urdf", pos, globalScaling=obj["unit"]/0.05) # cube_small is a 5cm 0.1kg cube
             elif obj["shape"] == 'sphere':
-                obj_to_grab_id = p.loadURDF("sphere_small.urdf", pos, globalScaling=obj["radius"]/0.06) # sphere_small is a 6cm diameter sphere
+                obj_to_grab_id = p.loadURDF("sphere_small.urdf", pos, globalScaling=obj["radius"]/0.06) # sphere_small is a 6cm 0.1kg diameter sphere
                 p.changeDynamics(obj_to_grab_id, -1, rollingFriction=1e-6, spinningFriction=1e-6) # allow the sphere to roll
 
             elif obj["shape"] == 'cylinder':

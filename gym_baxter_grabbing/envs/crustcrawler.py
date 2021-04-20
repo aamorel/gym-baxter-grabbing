@@ -52,7 +52,7 @@ class CrustCrawler(RobotGrasping):
             obj = self.obj
 
         h = 0.76
-        super().setup_world(table_height=h, initial_position=[self.delta_pos[0], 0.5+self.delta_pos[1], 0], obj=obj)
+        super().setup_world(table_height=h, initial_position=[self.delta_pos[0], 0.4+self.delta_pos[1], 0], obj=obj)
 
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
         # z offset to make baxter touch the floor z=1 is about -.074830m in pybullet
@@ -69,7 +69,7 @@ class CrustCrawler(RobotGrasping):
         self.maxVelocity = [p.getJointInfo(self.robot_id, i)[11] for i in self.joints_id]
         self.maxForce = [p.getJointInfo(self.robot_id, i)[10] for i in self.joints_id]
 
-        for contact_point in [[13,14], [11,14], [11,13]]:
+        for contact_point in [[11,14], [11,13]]:
             p.setCollisionFilterPair(robot_id, robot_id, contact_point[0], contact_point[1], enableCollision=0)
 
 
@@ -78,14 +78,14 @@ class CrustCrawler(RobotGrasping):
             
         #for i in [25, 26, 27, 28, 29, 30, 47, 48, 49, 50, 51, 52]: # add collision margin to the gripper
             #p.changeDynamics(robot_id, i, collisionMargin=0.04)
-        #for i in [28, 30, 50, 52]: # add friction to the finger tips
-            #p.changeDynamics(robot_id, i, lateralFriction=1)
+        for i in [13, 14]: # add friction to the finger tips
+            p.changeDynamics(robot_id, i, lateralFriction=1)
         
-        # set maximum velocity and force, doesn't work
+        """# set maximum velocity and force, doesn't work
         for i, id in enumerate(self.joints_id):#range(p.getNumJoints(robot_id)):
             #if p.getJointInfo(robot_id, i)[3]>-1:
             p.changeDynamics(robot_id, id, maxJointVelocity=self.maxVelocity[i], jointLimitForce=self.maxForce[i])
-        
+        """
         
 
         
@@ -117,17 +117,19 @@ class CrustCrawler(RobotGrasping):
 
         else:
             raise ValueError(f"self.action is neither a dict(en effector position) or an array(joint positions)")
-        p.setJointMotorControlArray(bodyIndex=self.robot_id, jointIndices=self.joints_id, controlMode=p.POSITION_CONTROL, targetPositions=commands)
+        #p.setJointMotorControlArray(bodyIndex=self.robot_id, jointIndices=self.joints_id, controlMode=p.POSITION_CONTROL, targetPositions=commands)
+        for id, command, mv, mf in zip(self.joints_id, commands, self.maxVelocity, self.maxForce):
+            p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=p.POSITION_CONTROL, targetPosition=command, maxVelocity=mv, force=mf)
 
     def compute_joint_poses(self):
         self.joint_poses = [state[0] for state in p.getJointStates(self.robot_id, self.joints_id)]
     
     def compute_self_contact(self):
         self.info['contact object table'] = p.getContactPoints(bodyA=self.obj_id, bodyB=self.table_id)
-        self.info['self contact_points'] = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id)
+        self.info['self contact_points'] = [c for c in p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id) if {c[3], c[4]}!={13,14}]
         self.info['contact robot table'] =  p.getContactPoints(bodyA=self.robot_id, bodyB=self.table_id)
-        if len(self.info['self contact_points'])>0:
-            print(self.info['self contact_points'])
+        #if len(self.info['self contact_points'])>0:
+            #print(self.info['self contact_points'])
 
     def compute_grip_info(self):
         pass
