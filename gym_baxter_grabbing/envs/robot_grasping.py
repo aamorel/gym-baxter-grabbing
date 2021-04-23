@@ -7,10 +7,18 @@ from pathlib import Path
 
 class RobotGrasping(gym.Env):
 
+    def init_callback(subinit):
+        def f(self, *args, **kwargs):
+            subinit(self, *args, **kwargs)
+            #print("bla", self.robot_id)
+        return f
+
+    @init_callback
     def __init__(self, display=False, obj='cube', random_obj=False, pos_cam=[1.3, 180, -40],
-                 gripper_display=False, steps_to_roll=1, random_var=0.01, delta_pos=[0, 0]):
+                 gripper_display=False, steps_to_roll=1, random_var=0.01, delta_pos=[0, 0], initial_position_object=[0,0,0]):
         assert isinstance(obj, str), "obj must be a str"
         self.obj = obj.strip()
+        self.initial_position_object = initial_position_object
         self.display = display
         self.random_obj = random_obj
         self.pos_cam = pos_cam
@@ -18,6 +26,7 @@ class RobotGrasping(gym.Env):
         self.steps_to_roll = steps_to_roll
         self.random_var = random_var
         self.delta_pos = delta_pos
+        self.has_reset_object = False
         if self.display:
             self.physics_client = p.connect(p.GUI)
         else:
@@ -27,7 +36,7 @@ class RobotGrasping(gym.Env):
         
         # setup the world
         self.setup_world()
-
+        #self.reset_robot()
         # save the state
         self.save_state = p.saveState()
 
@@ -51,7 +60,7 @@ class RobotGrasping(gym.Env):
                                                  parentLinkIndex=self.end_effector_id)
             sleep(1.)
 
-    def setup_world(self, table_height=None, initial_position=[0, 0, 0], obj=None):
+    def setup_world(self, table_height=None):
         p.resetSimulation()
         p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
@@ -65,50 +74,11 @@ class RobotGrasping(gym.Env):
 
         # set gravity
         p.setGravity(0., 0., -9.81)
-            
-        pos = initial_position
-        if self.random_obj:
-            pos[0] = pos[0] + random.gauss(0, self.random_var)
-            pos[1] = pos[1] + random.gauss(0, self.random_var)
-
-        # create object to grab
-        if isinstance(obj, dict):
-            if "shape" not in obj.keys(): raise ValueError("'shape' as a key doesn't exist in obj")
-            elif obj["shape"] == 'cuboid':
-                infoShape =  {"shapeType":p.GEOM_BOX, "halfExtents":[obj["x"]/2, obj["y"]/2, obj[z]/2]}
-                obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=p.createCollisionShape(**infoShape), baseVisualShapeIndex=p.createVisualShape(**infoShape, rgbaColor=[1, 0, 0, 1]))
-                p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
-                
-            elif obj["shape"] == 'cube':
-                obj_to_grab_id = p.loadURDF("cube_small.urdf", pos, globalScaling=obj["unit"]/0.05) # cube_small is a 5cm 0.1kg cube
-            elif obj["shape"] == 'sphere':
-                obj_to_grab_id = p.loadURDF("sphere_small.urdf", pos, globalScaling=obj["radius"]/0.06) # sphere_small is a 6cm 0.1kg diameter sphere
-                p.changeDynamics(obj_to_grab_id, -1, rollingFriction=1e-6, spinningFriction=1e-6) # allow the sphere to roll
-
-            elif obj["shape"] == 'cylinder':
-                infoShape =  {"shapeType":p.GEOM_BOX, "radius": obj["radius"]}
-                col_id = p.createCollisionShape(**infoShape, height=obj["z"])
-                viz_id = p.createVisualShape(**infoShape, length=obj["z"], rgbaColor=[1, 0, 0, 1])
-                obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-                p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
-            p.changeDynamics(obj_to_grab_id, -1, lateralFriction=0.7)
-        elif isinstance(obj, str):
-            urdf = Path(__file__).parent/"objects"/obj/f"{obj}.urdf"
-            if not urdf.exists(): raise ValueError(str(urdf) + " doesn't exist")
-            try:
-                obj_to_grab_id = p.loadURDF(str(urdf), pos) # the scale is set in the urdf file
-            except p.error as e:
-                raise p.error(f"{e}: "+path)
-        elif obj is None:
-            pass # do not load any object
-        else:
-            raise ValueError("Unrecognized object: "+self.obj)
-            
-        p.changeDynamics(obj_to_grab_id, -1, collisionMargin=0.04)
-        self.obj_id = obj_to_grab_id
+        
+        self.load_object(self.get_object(self.obj), delta_pos=self.delta_pos)
         
         # let the world run for a bit
-        for _ in range(240):
+        for _ in range(100):
             p.stepSimulation()
 
     def actuate(self):
@@ -167,8 +137,57 @@ class RobotGrasping(gym.Env):
         reward = None
         done = False
         return observation, reward, done, self.info
+    
+    def get_object(self, obj=None):
+        """ return a dict containing informations of the primitive shape or a str (urdf file) """
+        return obj
+        
+    def load_object(self, obj=None, delta_pos=[0,0]):
+        pos = [self.initial_position_object[0]+delta_pos[0],
+               self.initial_position_object[1]+delta_pos[1],
+               self.initial_position_object[2]]
+        if self.random_obj:
+            pos[0] += random.gauss(0, self.random_var)
+            pos[1] += random.gauss(0, self.random_var)
+
+        # create object to grab
+        if isinstance(obj, dict):
+            if "shape" not in obj.keys(): raise ValueError("'shape' as a key doesn't exist in obj")
+            elif obj["shape"] == 'cuboid':
+                infoShape =  {"shapeType":p.GEOM_BOX, "halfExtents":[obj["x"]/2, obj["y"]/2, obj[z]/2]}
+                obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=p.createCollisionShape(**infoShape), baseVisualShapeIndex=p.createVisualShape(**infoShape, rgbaColor=[1, 0, 0, 1]))
+                p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+                
+            elif obj["shape"] == 'cube':
+                obj_to_grab_id = p.loadURDF("cube_small.urdf", pos, globalScaling=obj["unit"]/0.05) # cube_small is a 5cm 0.1kg cube
+            elif obj["shape"] == 'sphere':
+                obj_to_grab_id = p.loadURDF("sphere_small.urdf", pos, globalScaling=obj["radius"]/0.06) # sphere_small is a 6cm 0.1kg diameter sphere
+                p.changeDynamics(obj_to_grab_id, -1, rollingFriction=1e-6, spinningFriction=1e-6) # allow the sphere to roll
+
+            elif obj["shape"] == 'cylinder':
+                infoShape =  {"shapeType":p.GEOM_BOX, "radius": obj["radius"]}
+                col_id = p.createCollisionShape(**infoShape, height=obj["z"])
+                viz_id = p.createVisualShape(**infoShape, length=obj["z"], rgbaColor=[1, 0, 0, 1])
+                obj_to_grab_id = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
+                p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+            p.changeDynamics(obj_to_grab_id, -1, lateralFriction=0.7)
+        elif isinstance(obj, str):
+            urdf = Path(__file__).parent/"objects"/obj/f"{obj}.urdf"
+            if not urdf.exists(): raise ValueError(str(urdf) + " doesn't exist")
+            try:
+                obj_to_grab_id = p.loadURDF(str(urdf), pos) # the scale is set in the urdf file
+            except p.error as e:
+                raise p.error(f"{e}: "+path)
+        #elif obj is None:
+            #pass # do not load any object
+        else:
+            raise ValueError("Unrecognized object: "+self.obj)
+            
+        p.changeDynamics(obj_to_grab_id, -1, collisionMargin=0.04)
+        self.obj_id = obj_to_grab_id
 
     def reset(self, delta_pos=[0,0]):
+        assert not self.has_reset_object, "you can not remove/change the object and restore a state: use either reset() or reset_object(), not both"
         p.restoreState(self.save_state)
         pos, qua = p.getBasePositionAndOrientation(self.obj_id)
         pos = [pos[0]+delta_pos[0], pos[1]+delta_pos[1], pos[2]]
@@ -176,6 +195,20 @@ class RobotGrasping(gym.Env):
             pos[0] += random.gauss(0, self.random_var)
             pos[1] += random.gauss(0, self.random_var)
         p.resetBasePositionAndOrientation(self.obj_id, pos, qua)
+            
+    def reset_object(self, obj=None, delta_pos=[0,0]):
+        if obj == self.obj and not self.has_reset_object:
+            self.reset(delta_pos=delta_pos)
+        else:
+            self.has_reset_object = True
+            self.reset_robot()
+            p.removeBody(self.obj_id)
+            self.load_object(self.get_object(obj), delta_pos=delta_pos)
+            for _ in range(100): p.stepSimulation() # let the object fall
+    
+    def reset_robot(self):
+        pass
+            
 
     def render(self, mode='human'):
         pass

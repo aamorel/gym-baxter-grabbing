@@ -522,15 +522,18 @@
 	            <visual>
 	                <origin xyz="0 0 0" rpy="0 0 0" />
 	                <geometry>
-	                    <mesh filename="package://crustcrawler_description/meshes/collada/arm_right_finger.dae"/>
+	                    <mesh filename="package://crustcrawler_description/meshes/arm_right_finger.obj"/>
 	                </geometry>
+                    <material name="grey">
+                        <color rgba="0.8 0.8 0.8 1"/>
+                    </material>
 	            </visual>
 	            
 	            <collision>
-	                <origin xyz="0 0 ${height_11/2.0}" rpy="0 0 0" />
-	                <geometry>
-	                    <box size=" 0.06 0.034 0.11 "></box>
-	                </geometry>
+                    <origin xyz="0 0 0" rpy="0 0 0" />
+                    <geometry>
+                        <mesh filename="package://crustcrawler_description/meshes/arm_right_finger.obj"/>
+                    </geometry>
 	            </collision>
 
 	    <inertial>
@@ -547,15 +550,18 @@
 	            <visual>
 	                <origin xyz="0 0 0" rpy="0 0 0" />
 	                <geometry>
-	                    <mesh filename="package://crustcrawler_description/meshes/collada/arm_left_finger.dae"/>
+	                    <mesh filename="package://crustcrawler_description/meshes/arm_left_finger.obj"/>
 	                </geometry>
+                    <material name="grey">
+                        <color rgba="0.8 0.8 0.8 1"/>
+                    </material>
 	            </visual>
 	            
 	            <collision>
-	                <origin xyz="0 0 ${height_11/2.0}" rpy="0 0 0" />
-	                <geometry>
-	                    <box size=" 0.06 0.034 0.11 "></box>
-	                </geometry>
+                    <origin xyz="0 0 0" rpy="0 0 0" />
+                    <geometry>
+                        <mesh filename="package://crustcrawler_description/meshes/arm_left_finger.obj"/>
+                    </geometry>
 	            </collision>
 
 	    <inertial>

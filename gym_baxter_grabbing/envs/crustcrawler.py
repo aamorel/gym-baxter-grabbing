@@ -31,36 +31,37 @@ class CrustCrawler(RobotGrasping):
         self.crustcrawler_urdf_file = str(urdf)
             
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.2, 180, -40],
-                         gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
+                         gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos, initial_position_object=[0, 0.4, 0])
         
         
-
+    def get_object(self, obj=None):
+        if obj == 'cuboid':
+            return {"shape":'cuboid', "x":0.046, "y":0.1, "z":0.216}
+        elif obj == 'cube':
+            return {"shape": 'cube', "unit":0.055}
+        elif obj == 'sphere':
+            return {"shape":'sphere', "radius":0.055}
+        elif obj == 'cylinder':
+            return {"shape":'cylinder', "radius":0.032, "z":0.15}
+        elif obj == 'paper roll':
+            return {"shape":'cylinder', "radius":0.021, "z":0.22}
+        else:
+            return obj
 
     def setup_world(self):
-		# create object to grab
-        if self.obj == 'cuboid':
-            obj = {"shape":'cuboid', "x":0.046, "y":0.1, "z":0.216}
-        elif self.obj == 'cube':
-            obj = {"shape": 'cube', "unit":0.055}
-        elif self.obj == 'sphere':
-            obj = {"shape":'sphere', "radius":0.055}
-        elif self.obj == 'cylinder':
-            obj = {"shape":'cylinder', "radius":0.032, "z":0.15}
-        elif self.obj == 'paper roll':
-            obj = {"shape":'cylinder', "radius":0.021, "z":0.22}
-        else:
-            obj = self.obj
 
         h = 0.76
-        super().setup_world(table_height=h, initial_position=[self.delta_pos[0], 0.4+self.delta_pos[1], 0], obj=obj)
+        super().setup_world(table_height=h)
 
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
         # z offset to make baxter touch the floor z=1 is about -.074830m in pybullet
-        robot_id = p.loadURDF(self.crustcrawler_urdf_file, basePosition=[0, 0, h-1+1e-3], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=urdf_flags)
+        self.basePosition = np.array([0, 0, h-1+1e-3])
+        robot_id = p.loadURDF(self.crustcrawler_urdf_file, basePosition=self.basePosition, baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=urdf_flags)
         self.robot_id = robot_id
         self.end_effector_id = 15
         self.joints_id = [i for i in range(p.getNumJoints(self.robot_id)) if p.getJointInfo(self.robot_id, i)[3]>-1]
         self.n_joints = len(self.joints_id)
+        self.reachable_radius = 0.65
         
         lowerLimits, upperLimits = np.array([p.getJointInfo(self.robot_id, i)[8:10] for i in self.joints_id]).T
         self.jointRanges = (upperLimits - lowerLimits).tolist()
@@ -86,22 +87,20 @@ class CrustCrawler(RobotGrasping):
             #if p.getJointInfo(robot_id, i)[3]>-1:
             p.changeDynamics(robot_id, id, maxJointVelocity=self.maxVelocity[i], jointLimitForce=self.maxForce[i])
         """
-        
 
         
     def actuate(self):
 
         if isinstance(self.action, dict):
-            assert {"cartesian", "quaternion", "gripper close"} <= set(self.action.keys())
-            target_position = self.action["cartesian"]#self.action[0:3]
-            target_orientation = self.action["quaternion"]#self.action[3:7]
-            quat_orientation = pyq.Quaternion(target_orientation)
-            quat_orientation = quat_orientation.normalised
+            assert {"position", "quaternion", "gripper close"} <= set(self.action.keys())
+            target_position = self.action["position"]#self.action[0:3]
+            target_orientation = pyq.Quaternion(self.action["quaternion"]).normalised
             self.info['closed gripper'] = closed = self.action["gripper close"] # Bool
 
             commands = np.zeros(self.n_joints)
-            commands[:self.n_joints-2] = np.array(p.calculateInverseKinematics(self.robot_id, self.end_effector_id, target_position, targetOrientation=target_orientation, lowerLimits=self.lowerLimits, upperLimits=self.upperLimits, jointRanges=self.jointRanges, restPoses=self.restPoses))[self.joints_id[-3:]]
-            commands[-3:] = [self.lowerLimits[-2], self.upperLimits[-1]] if closed else [self.upperLimits[-2], self.lowerLimits[-1]] # add gripper
+            commands[:-2] = p.calculateInverseKinematics(self.robot_id, self.end_effector_id, target_position, targetOrientation=target_orientation)[:-2]
+            #commands[:-2] = np.array(p.calculateInverseKinematics(self.robot_id, self.end_effector_id, target_position, targetOrientation=target_orientation, lowerLimits=self.lowerLimits, upperLimits=self.upperLimits, jointRanges=self.jointRanges, restPoses=self.restPoses))[self.joints_id[:-2]]
+            commands[-2:] = [self.lowerLimits[-2], self.upperLimits[-1]] if closed else [self.upperLimits[-2], self.lowerLimits[-1]] # add gripper
             commands = commands.tolist()
 
 
@@ -133,6 +132,10 @@ class CrustCrawler(RobotGrasping):
 
     def compute_grip_info(self):
         pass
+        
+    def reset_robot(self):
+        for i,v in zip(self.joints_id, [0]*self.n_joints):
+            p.resetJointState(self.robot_id, i, targetValue=v)
 
 
     def get_action(self):
@@ -142,7 +145,7 @@ class CrustCrawler(RobotGrasping):
             low = self.lowerLimits[i]
             high = self.upperLimits[i]
             positions[i] = 2*(pos-high)/(high-low) + 1
-        return positions
+        return positions, p.getLinkState(self.robot_id, self.end_effector_id)
 
 if __name__ == "__main__": # testing
     env = CrustCrawler(display=True)

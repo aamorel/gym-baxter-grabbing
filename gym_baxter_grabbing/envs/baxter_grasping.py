@@ -181,47 +181,46 @@ class BaxterGrasping(RobotGrasping):
         self.baxter_urdf_file = str(urdf)
             
         super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.2, 180, -40],
-                         gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos)
+                         gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos, initial_position_object=[delta_pos[0], 0.12+delta_pos[1], 0])
                          
         # much simpler and faster (we want a linear function)
-        self.interp_grip = lambda a: (a + 1) * 0.010416
+        #self.interp_grip = lambda a: (a + 1) * 0.010416
 
-
-    def setup_world(self, initialSimSteps=100):
+    def get_object(self, obj=None):
         # create object to grab
-        if self.obj == 'cuboid':
-            obj = {"shape":'cuboid', "x":0.046, "y":0.1, "z":0.216}
-        elif self.obj == 'cube':
-            obj = {"shape": 'cube', "unit":0.055}
-        elif self.obj == 'sphere':
-            obj = {"shape":'sphere', "radius":0.055}
-        elif self.obj == 'cylinder':
-            obj = {"shape":'cylinder', "radius":0.032, "z":0.15}
-        elif self.obj == 'paper roll':
-            obj = {"shape":'cylinder', "radius":0.021, "z":0.22}
+        if obj == 'cuboid':
+            return {"shape":'cuboid', "x":0.046, "y":0.1, "z":0.216}
+        elif obj == 'cube':
+            return {"shape": 'cube', "unit":0.055}
+        elif obj == 'sphere':
+            return {"shape":'sphere', "radius":0.055}
+        elif obj == 'cylinder':
+            return {"shape":'cylinder', "radius":0.032, "z":0.15}
+        elif obj == 'paper roll':
+            return {"shape":'cylinder', "radius":0.021, "z":0.22}
         else:
-            obj = self.obj
+            return obj
+        
+    def setup_world(self, initialSimSteps=100):
 
-        super().setup_world(table_height=0.76, initial_position=[self.delta_pos[0], 0.12+self.delta_pos[1], 0], obj=obj)
+        super().setup_world(table_height=0.76)
 
         # load Baxter
         urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
         # z offset to make baxter touch the floor z=1 is about -.074830m in pybullet
-        robot_id = p.loadURDF(self.baxter_urdf_file, basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=urdf_flags)
+        self.robot_id = p.loadURDF(self.baxter_urdf_file, basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=urdf_flags)
 
         for contact_point in [[49, 51], [38, 53], [27, 29], [16, 31], [1, 10], [1, 7], [1, 5], [0, 10], [0, 7], [0, 5], [0, 1], [40, 53], [37, 54], [34, 36], [18, 31], [15, 32], [12, 14], [35, 2], [34, 2], [14, 2], [13, 2], [12, 2], [2, 7], [1, 2], [0, 2], [41, 53], [36, 2], [34, 54], [54, 2], [50, 55], [38, 54], [1, 53], [1, 38], [1, 37], [16, 32], [19,31], [49,52], [50,51], [50,52]]:
-            p.setCollisionFilterPair(robot_id, robot_id, contact_point[0], contact_point[1], enableCollision=0)
+            p.setCollisionFilterPair(self.robot_id, self.robot_id, contact_point[0], contact_point[1], enableCollision=0)
 
-
-        for i,v in zip([34, 35, 36, 37, 38, 40, 41,  12, 13, 14, 15, 16, 18, 19], [-0.08, -1.0, -1.19, 1.94, 0.67, 1.03, -0.50,  0.08, -1.0,  1.19, 1.94, -0.67, 1.03, 0.50]):
-            p.resetJointState(robot_id, i, targetValue=v) # put baxter in untuck position
-            
+        self.reset_robot()
+                    
         for i in [25, 26, 27, 28, 29, 30, 47, 48, 49, 50, 51, 52]: # add collision margin to the gripper
-            p.changeDynamics(robot_id, i, collisionMargin=0.04)
+            p.changeDynamics(self.robot_id, i, collisionMargin=0.04)
         for i in [28, 30, 50, 52]: # add friction to the finger tips
-            p.changeDynamics(robot_id, i, lateralFriction=1)
+            p.changeDynamics(self.robot_id, i, lateralFriction=1)
         
-        self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses, self.maxForce, self.maxVelocity = getJointRanges(robot_id, includeFixed=False)
+        self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses, self.maxForce, self.maxVelocity = getJointRanges(self.robot_id, includeFixed=False)
         """
         # set maximum velocity and force, doesn't work
         for i in range(self.n_joints):#range(p.getNumJoints(robot_id)):
@@ -229,8 +228,13 @@ class BaxterGrasping(RobotGrasping):
             p.changeDynamics(robot_id, i, maxJointVelocity=self.maxVelocity[self.ids_in_ranges[i]], jointLimitForce=self.maxForce[self.ids_in_ranges[i]])
         """
             
-        self.robot_id = robot_id
         self.end_effector_id = 48
+        
+    def reset_robot(self):
+        for i,v in zip([34, 35, 36, 37, 38, 40, 41,  12, 13, 14, 15, 16, 18, 19], [-0.08, -1.0, -1.19, 1.94, 0.67, 1.03, -0.50,  0.08, -1.0,  1.19, 1.94, -0.67, 1.03, 0.50]):
+            p.resetJointState(self.robot_id, i, targetValue=v) # put baxter in untuck position
+
+        
 
     def actuate(self):
 
@@ -247,7 +251,7 @@ class BaxterGrasping(RobotGrasping):
             setMotors(self.robot_id, jointPoses)
 
             # explicitly control the gripper
-            target_gripper_pos = float(self.interp_grip(target_gripper))
+            target_gripper_pos = (target_gripper + 1) * 0.010416
             p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=49, controlMode=p.POSITION_CONTROL,
                                     targetPosition=target_gripper_pos, force=MAX_FORCE)
             p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=51, controlMode=p.POSITION_CONTROL,
@@ -280,7 +284,6 @@ class BaxterGrasping(RobotGrasping):
                 p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=p.POSITION_CONTROL, targetPosition=command, maxVelocity=self.maxVelocity[id_in_ranges], force=self.maxForce[id_in_ranges])
 
     def compute_joint_poses(self):
-
         self.joint_poses = getJointStates(self.robot_id)
     
     def compute_self_contact(self):
@@ -301,4 +304,4 @@ class BaxterGrasping(RobotGrasping):
             low = self.lowerLimits[self.ids_in_ranges[i]]
             high = self.upperLimits[self.ids_in_ranges[i]]
             positions[i] = 2*(pos-high)/(high-low) + 1
-        return positions
+        return positions, p.getLinkState(self.robot_id, self.end_effector_id)

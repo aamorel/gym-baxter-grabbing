@@ -279,3 +279,6 @@ class KukaGrasping(RobotGrasping):
 
         if self.joint_poses[9] < 0 and self.joint_poses[11] > 0:
             self.info['closed gripper'] = False
+    
+    def compute_self_contact(self):
+        self.info['contact object table'] = p.getContactPoints(bodyA=self.obj_id, bodyB=self.table_id)
