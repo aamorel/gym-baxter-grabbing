@@ -1,3 +1,7 @@
+
+
+
+
 import pybullet as p
 import numpy as np
 import os
@@ -9,69 +13,11 @@ import json
 import xml.etree.ElementTree as ET
 from .xacro import _process
 
-MAX_FORCE = 100
-
-
-def getJointRanges(bodyId, includeFixed=False):
-    """
-    Parameters
-    ----------
-    bodyId : int
-    includeFixed : bool
-
-    Returns
-    -------
-    lowerLimits : [ float ] * numDofs
-    upperLimits : [ float ] * numDofs
-    jointRanges : [ float ] * numDofs
-    restPoses : [ float ] * numDofs
-    """
-
-    lowerLimits, upperLimits, jointRanges, restPoses, maxForce, maxVelocity = [], [], [], [], [], []
-    numJoints = p.getNumJoints(bodyId)
-    # loop through all joints
-    for i in range(numJoints):
-        jointInfo = p.getJointInfo(bodyId, i)
-        if includeFixed or jointInfo[3] > -1:
-            # jointInfo[3] > -1 means that the joint is not fixed
-            ll, ul = jointInfo[8:10]
-            jr = ul - ll
-
-            # For simplicity, assume resting state == initial state
-            rp = p.getJointState(bodyId, i)[0]
-
-            lowerLimits.append(ll)
-            upperLimits.append(ul)
-            jointRanges.append(jr)
-            restPoses.append(rp)
-            maxForce.append(jointInfo[10])
-            maxVelocity.append(jointInfo[11])
-
-    return lowerLimits, upperLimits, jointRanges, restPoses, maxForce, maxVelocity
 
 
 def accurateIK(bodyId, end_effector_id, targetPosition, targetOrientation, lowerLimits, upperLimits, jointRanges,
                restPoses,
                useNullSpace=False, maxIter=10, threshold=1e-4):
-    """
-    Parameters
-    ----------
-    bodyId : int
-    end_effector_id : int
-    targetPosition : [float, float, float]
-    targetOrientation: Quaternion
-    lowerLimits : [float]
-    upperLimits : [float]
-    jointRanges : [float]
-    restPoses : [float]
-    useNullSpace : bool
-    maxIter : int
-    threshold : float
-
-    Returns
-    -------
-    jointPoses : [float] * numDofs
-    """
 
     if useNullSpace:
         jointPoses = p.calculateInverseKinematics(bodyId, end_effector_id, targetPosition,
@@ -86,67 +32,18 @@ def accurateIK(bodyId, end_effector_id, targetPosition, targetOrientation, lower
     return jointPoses
 
 
-def setMotors(bodyId, jointPoses):
-    """
-    Parameters
-    ----------
-    bodyId : int
-    jointPoses : [float] * numDofs
-    """
-    numJoints = p.getNumJoints(bodyId)
-
-    for i in range(numJoints):
-        jointInfo = p.getJointInfo(bodyId, i)
-        qIndex = jointInfo[3]
-        if qIndex > -1:
-            p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=i, controlMode=p.POSITION_CONTROL,
-                                    targetPosition=jointPoses[qIndex - 7], maxVelocity=0.5, force=MAX_FORCE)
-
-
-def setMotorsIds(bodyId, joint_ids, jointPoses):
-    """
-    Parameters
-    ----------
-    bodyId : int
-    jointPoses : [float] * numDofs
-    """
-
-    #p.setJointMotorControlArray(bodyIndex=bodyId, jointIndices=joint_ids, controlMode=p.POSITION_CONTROL, targetPositions=jointPoses) # doesn't work
-    for i, id in enumerate(joint_ids):
-        p.setJointMotorControl2(bodyIndex=bodyId, jointIndex=id, controlMode=p.POSITION_CONTROL,
-                                targetPosition=jointPoses[i], maxVelocity=0.5, force=MAX_FORCE)
-
-
-def getJointStates(bodyId, includeFixed=False):
-    """
-    Parameters
-    ----------
-    bodyId : int
-    includeFixed : bool
-
-    Returns
-    -------
-    lowerLimits : [ float ] * numDofs
-
-    """
-
-    valid = [i for i in range(p.getNumJoints(bodyId)) if includeFixed or p.getJointInfo(bodyId, i)[3] > -1]
-    # jointInfo[3] > -1 means that the joint is not fixed
-    # state[0] is the joint position
-    return [state[0] for state in p.getJointStates(bodyId, valid)]
-
 
 class BaxterGrasping(RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', random_obj=False, delta_pos=[0, 0],
-                 steps_to_roll=1, mode='joints_space', y_pose=0.12, random_var=0.01,
+    def __init__(self, display=False, obj='cube', delta_pos=[0, 0],
+                 steps_to_roll=1, mode='joint positions', y_pose=0.12, random_var=None,
                  finger="extended_narrow", slot=3, tip="basic_soft", grasp="inner", limit_scale=0.13):
         
         self.y_pos = y_pose
         self.mode = mode
-        if mode == 'joints_space':
+        if mode == 'joint positions':
             self.joints_id = [34, 35, 36, 37, 38, 40, 41, 49, 51]
-            self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]
+            #self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]
             self.n_joints = len(self.joints_id)
             
         obj = obj.strip()
@@ -178,13 +75,29 @@ class BaxterGrasping(RobotGrasping):
         urdf.parent.mkdir(exist_ok=True)
         if not urdf.is_file(): # create the file if doesn't exist
             _process(cwd/"robots/baxter_description/urdf/baxter_symmetric.xacro", dict(output=urdf, just_deps=False, xacro_ns=True, verbosity=1, mappings={'finger':finger, "slot":str(slot), 'tip':tip+"_tip", "grasp":grasp, "limit_scale":str(limit_scale)})) # convert xacro to urdf
-        self.baxter_urdf_file = str(urdf)
-            
-        super().__init__(display=display, obj=obj, random_obj=random_obj, pos_cam=[1.2, 180, -40],
-                         gripper_display=False, steps_to_roll=steps_to_roll, random_var=random_var, delta_pos=delta_pos, initial_position_object=[delta_pos[0], 0.12+delta_pos[1], 0])
-                         
-        # much simpler and faster (we want a linear function)
-        #self.interp_grip = lambda a: (a + 1) * 0.010416
+        
+        super().__init__(
+            robot=lambda: self.p.loadURDF(fileName=str(urdf), basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=self.p.URDF_USE_SELF_COLLISION),
+            display=display,
+            obj=obj,
+            pos_cam=[1.2, 180, -40],
+            gripper_display=False,
+            steps_to_roll=steps_to_roll,
+            random_var=random_var,
+            delta_pos=delta_pos,
+            initial_position_object=[0, 0.12, 0],
+            table_height=0.76,
+            mode = mode,
+            end_effector_id = 48,
+            joint_ids = [34, 35, 36, 37, 38, 40, 41, 49, 51],
+            n_actions = 8,
+            center_workspace = 34,
+            radius = 1.2,
+            contact_ids=[47, 48, 49, 50, 51, 52],
+            disable_collision_pair = [[49, 51], [38, 53], [27, 29], [16, 31], [1, 10], [1, 7], [1, 5], [0, 10], [0, 7], [0, 5], [0, 1], [40, 53], [37, 54], [34, 36], [18, 31], [15, 32], [12, 14], [35, 2], [34, 2], [14, 2], [13, 2], [12, 2], [2, 7], [1, 2], [0, 2], [41, 53], [36, 2], [34, 54], [54, 2], [50, 55], [38, 54], [1, 53], [1, 38], [1, 37], [16, 32], [19,31], [49,52], [50,51], [50,52]],
+            change_dynamics = {i:{'collisionMargin':0.04} for i in (25, 26, 27, 29, 47, 48, 49, 51)} | {i:{'collisionMargin':0.04, 'lateralFriction':1} for i in (28, 30, 50, 52)}
+        )
+
 
     def get_object(self, obj=None):
         # create object to grab
@@ -201,44 +114,17 @@ class BaxterGrasping(RobotGrasping):
         else:
             return obj
         
-    def setup_world(self, initialSimSteps=100):
 
-        super().setup_world(table_height=0.76)
-
-        # load Baxter
-        urdf_flags = p.URDF_USE_SELF_COLLISION   # makes the simulation go crazys
-        # z offset to make baxter touch the floor z=1 is about -.074830m in pybullet
-        self.robot_id = p.loadURDF(self.baxter_urdf_file, basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=urdf_flags)
-
-        for contact_point in [[49, 51], [38, 53], [27, 29], [16, 31], [1, 10], [1, 7], [1, 5], [0, 10], [0, 7], [0, 5], [0, 1], [40, 53], [37, 54], [34, 36], [18, 31], [15, 32], [12, 14], [35, 2], [34, 2], [14, 2], [13, 2], [12, 2], [2, 7], [1, 2], [0, 2], [41, 53], [36, 2], [34, 54], [54, 2], [50, 55], [38, 54], [1, 53], [1, 38], [1, 37], [16, 32], [19,31], [49,52], [50,51], [50,52]]:
-            p.setCollisionFilterPair(self.robot_id, self.robot_id, contact_point[0], contact_point[1], enableCollision=0)
-
-        self.reset_robot()
-                    
-        for i in [25, 26, 27, 28, 29, 30, 47, 48, 49, 50, 51, 52]: # add collision margin to the gripper
-            p.changeDynamics(self.robot_id, i, collisionMargin=0.04)
-        for i in [28, 30, 50, 52]: # add friction to the finger tips
-            p.changeDynamics(self.robot_id, i, lateralFriction=1)
-        
-        self.lowerLimits, self.upperLimits, self.jointRanges, self.restPoses, self.maxForce, self.maxVelocity = getJointRanges(self.robot_id, includeFixed=False)
-        """
-        # set maximum velocity and force, doesn't work
-        for i in range(self.n_joints):#range(p.getNumJoints(robot_id)):
-            #if p.getJointInfo(robot_id, i)[3]>-1:
-            p.changeDynamics(robot_id, i, maxJointVelocity=self.maxVelocity[self.ids_in_ranges[i]], jointLimitForce=self.maxForce[self.ids_in_ranges[i]])
-        """
-            
-        self.end_effector_id = 48
         
     def reset_robot(self):
         for i,v in zip([34, 35, 36, 37, 38, 40, 41,  12, 13, 14, 15, 16, 18, 19], [-0.08, -1.0, -1.19, 1.94, 0.67, 1.03, -0.50,  0.08, -1.0,  1.19, 1.94, -0.67, 1.03, 0.50]):
-            p.resetJointState(self.robot_id, i, targetValue=v) # put baxter in untuck position
+            self.p.resetJointState(self.robot_id, i, targetValue=v) # put baxter in untuck position
 
         
 
-    def actuate(self):
+    def step(self, action):
 
-        if self.mode == 'end_effector_space':
+        if self.mode == 'inverse kinematic':
             target_position = self.action[0:3]
             target_orientation = self.action[3:7]
             quat_orientation = pyq.Quaternion(target_orientation)
@@ -252,43 +138,24 @@ class BaxterGrasping(RobotGrasping):
 
             # explicitly control the gripper
             target_gripper_pos = (target_gripper + 1) * 0.010416
-            p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=49, controlMode=p.POSITION_CONTROL,
+            self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=49, controlMode=self.p.POSITION_CONTROL,
                                     targetPosition=target_gripper_pos, force=MAX_FORCE)
-            p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=51, controlMode=p.POSITION_CONTROL,
+            self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=51, controlMode=self.p.POSITION_CONTROL,
                                     targetPosition=-target_gripper_pos, force=MAX_FORCE)
 
-        if self.mode == 'joints_space':
+        if self.mode == 'joint positions':
             # we want one action per joint (gripper is composed by 2 joints but considered as one)
-            assert(len(self.action) == self.n_joints - 1)
-
+            assert(len(action) == self.n_actions)
+            self.info['closed gripper'] = action>0
             # add the command for the last gripper joint
-            for i in range(1):
-                self.action = np.append(self.action, self.action[-1])
+            #self.action = np.append(self.action, -self.action[-1])
+            commands = np.append(action, -action[-1])
+            #commands = [l+(a+1)/2*(u-l) for a,u,l in zip(self.action, self.upperLimits, self.lowerLimits)]
+            #for id, command, v ,f in zip(self.joints_id, commands, self.maxVelocity, self.maxForce):
+                #self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=self.p.POSITION_CONTROL, targetPosition=command, maxVelocity=v, force=f)
+        return super().step(commands)
 
-            # map the action
-            commands = []
-            for i, joint_command in enumerate(self.action):
-                percentage_command = (joint_command + 1) / 2  # between 0 and 1
-                if i == 8:
-                    percentage_command = 1 - percentage_command
-                low = self.lowerLimits[self.ids_in_ranges[i]]
-                high = self.upperLimits[self.ids_in_ranges[i]]
 
-                command = low + percentage_command * (high - low)
-                commands.append(command)
-
-            # apply the commands
-            #setMotorsIds(self.robot_id, self.joints_id, commands)
-            #p.setJointMotorControlArray(bodyIndex=self.robot_id, jointIndices=self.joints_id, controlMode=p.POSITION_CONTROL, targetPositions=commands, forces=[self.maxForce[i] for i in self.ids_in_ranges])
-            for id, command, id_in_ranges in zip(self.joints_id, commands, self.ids_in_ranges):
-                p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=p.POSITION_CONTROL, targetPosition=command, maxVelocity=self.maxVelocity[id_in_ranges], force=self.maxForce[id_in_ranges])
-
-    def compute_joint_poses(self):
-        self.joint_poses = getJointStates(self.robot_id)
-    
-    def compute_self_contact(self):
-        self.info['contact object table'] = p.getContactPoints(bodyA=self.obj_id, bodyB=self.table_id)
-        self.info['self contact_points'] = p.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id)# + p.getContactPoints(bodyA=self.robot_id, bodyB=self.table_id)
 
     def compute_grip_info(self):
         self.info['closed gripper'] = True
@@ -297,11 +164,9 @@ class BaxterGrasping(RobotGrasping):
         if self.joint_poses[-1] > 0.0003 or self.joint_poses[-1] < -0.0003:
             self.info['closed gripper'] = False
 
-    def get_action(self):
-        positions = [0]*(self.n_joints-1)
-        for i,j in enumerate(self.joints_id[:-1]):
-            pos = p.getJointState(self.robot_id, j)[0]
-            low = self.lowerLimits[self.ids_in_ranges[i]]
-            high = self.upperLimits[self.ids_in_ranges[i]]
-            positions[i] = 2*(pos-high)/(high-low) + 1
-        return positions, p.getLinkState(self.robot_id, self.end_effector_id)
+    def get_state(self):
+
+        positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joints_id[:-1]), self.upperLimits[:-1], self.lowerLimits[:-1])]
+        return positions, self.p.getLinkState(self.robot_id, self.end_effector_id)
+
+
