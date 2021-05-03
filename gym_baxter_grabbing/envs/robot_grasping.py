@@ -41,10 +41,7 @@ class RobotGrasping(gym.Env):
 
     def __init_subclass__(cls, *args, **kwargs): # callback trick
         super().__init_subclass__(*args, **kwargs)
-        #oldinit = cls.__init__
-        #def newinit(self, *args, **kwargs): # this function wraps __init__ in subclasses
-            #oldinit(self, *args, **kwargs)
-        #cls.__init__ = newinit
+
 
     def __init__(self,
         robot: Callable[[], int], # function to load the robot, returning the id
@@ -64,7 +61,8 @@ class RobotGrasping(gym.Env):
         center_workspace: Union[int, npt.ArrayLike] = -1, # position of the center of the sphere, supposing the workspace is a sphere (robotic arm) and the robot is not moving, if int, the position of the robot link is used
         radius: float = 1, # radius of the workspace
         contact_ids: npt.ArrayLike = [], # link id (int) of the robot gripper that can have a grasping contact
-        disable_collision_pair: npt.ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) to disable collision
+        disable_collision_pair: npt.ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) to disable collision with setCollisionFilterPair
+        allowed_collision_pair: npt.ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) allowed in autocollision
         change_dynamics: Dict[int, Dict[str, Any]] = {} # the key is the robot link id, the value is the args passed to p.changeDynamics
     ):
         weakref.finalize(self, self.close) # cleanup
@@ -84,12 +82,11 @@ class RobotGrasping(gym.Env):
         self.n_actions = n_actions
         self.radius = radius
         self.contact_ids = contact_ids
+        self.allowed_collision_pair = [set(c) for c in allowed_collision_pair]
 
         self.p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-        #self.p.resetSimulation()
         self.p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
-        #self.p.configureDebugVisualizer(self.p.COV_ENABLE_RENDERING, 0)
 
         self.plane_id = self.p.loadURDF("plane.urdf", [0, 0, -1], useFixedBase=True) # load plane with an offset
 
@@ -142,14 +139,18 @@ class RobotGrasping(gym.Env):
                                                  parentObjectUniqueId=self.robot_id,
                                                  parentLinkIndex=self.end_effector_id)
                                                  for end, color in zip(np.eye(3)*0.2, np.eye(3))]
-        # let the world run for a bit
-        for _ in range(100): self.p.stepSimulation()
+        
+        for _ in range(100): self.p.stepSimulation() # let the world run for a bit
         
         
         self.save_state = self.p.saveState()
         self.action_space = gym.spaces.Box(-1., 1., shape=(self.n_actions,), dtype='float32')
         self.observation_space = gym.spaces.Box(-1., 1., shape=(13+len(self.joint_ids)*2,), dtype='float32') # TODO: add image if asked
-        self.info = {'contact object table':[], 'applied joint motor torques':np.zeros(self.n_joints), 'joint positions':np.zeros(self.n_joints), 'joint velocities':np.zeros(self.n_joints)}
+        self.info = {'contact object table':[],
+            'applied joint motor torques':np.zeros(self.n_joints),
+            'joint positions':np.zeros(self.n_joints),
+            'joint velocities':np.zeros(self.n_joints)
+        }
 
 
     def step(self, action=None): # actions are in [-1,1]
@@ -171,12 +172,8 @@ class RobotGrasping(gym.Env):
         self.info['contact object plane'] = self.p.getContactPoints(bodyA=self.obj_id, bodyB=self.plane_id)
         self.info['contact object table'] = self.p.getContactPoints(bodyA=self.obj_id, bodyB=self.table_id) if self.table_id is not None else []
         self.info['contact robot robot'] = self.p.getContactPoints(bodyA=self.robot_id,bodyB=self.robot_id)
-        self.info['touch'] = False
-        for c in self.info['contact object robot']:
-            if c[4] in self.contact_ids:
-                self.info['touch'] = True
-                break
-        #self.compute_self_contact()
+        self.info['touch'], self.info['autocollision'], penetration = False, False, False
+         
 
         if self.display and self.gripper_display:
             self.lines = [self.p.addUserDebugLine([0, 0, 0], end, color, lineWidth=self.line_width,
@@ -185,13 +182,16 @@ class RobotGrasping(gym.Env):
                                              parentLinkIndex=self.end_effector_id)
 											 for end, color, id in zip(np.eye(3)*0.2, np.eye(3), self.lines)]
 
-        reward = False
         for c in self.info['contact object robot']:
-            if c[8]<-0.005: # if contactDistance is negative, there is a penetration, this is bad
-                reward = False
+            penetration = penetration or c[8]<-0.005 # if contactDistance is negative, there is a penetration, this is bad
+            self.info['touch'] = self.info['touch'] or c[4] in self.contact_ids # the object must touch the gripper
+        for c in self.info['contact robot robot']:
+            if set(c[3:5]) not in self.allowed_collision_pair:
+                self.info['autocollision'] = True
                 break
-            elif c[4] in self.contact_ids: reward = True # the object must touch the gripper
-        reward = len(self.info['contact object table'] + self.info['contact object plane'])==0 and reward
+            #self.info['autocollision'] = self.info['autocollision'] or set(c[3:5]) not in self.self.info['autocollision']
+        
+        reward = len(self.info['contact object table'] + self.info['contact object plane'])==0 and self.info['touch'] and not penetration
         done = False
         # observations are normalized, thus it is not mean to be handled by humans, check info for human readable datas
         return self.get_obs(), reward, done, self.info
@@ -272,7 +272,7 @@ class RobotGrasping(gym.Env):
         absolute_center = p.multiplyTransforms(*self.p.getBasePositionAndOrientation(self.robot_id), *self.center_workspace) # the pose of center_workspace in the world
         obj_pos, obj_or = self.p.multiplyTransforms(*self.p.invertTransform(*absolute_center), *obj_pose) # the object pose in the center_workspace frame
         observation = np.hstack([np.array(obj_pos)/self.radius, obj_or, *obj_vel, pos, vel])
-        return observation#np.maximum(np.minimum(obs,1),-1)
+        return observation #np.maximum(np.minimum(obs,1),-1)
 
             
     def reset_object(self, obj=None, delta_pos=[0,0]): # TODO: delete, useless

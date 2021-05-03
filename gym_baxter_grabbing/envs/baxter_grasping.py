@@ -1,7 +1,3 @@
-
-
-
-
 import pybullet as p
 import numpy as np
 import os
@@ -146,23 +142,11 @@ class BaxterGrasping(RobotGrasping):
         if self.mode == 'joint positions':
             # we want one action per joint (gripper is composed by 2 joints but considered as one)
             assert(len(action) == self.n_actions)
-            self.info['closed gripper'] = action>0
-            # add the command for the last gripper joint
-            #self.action = np.append(self.action, -self.action[-1])
-            commands = np.append(action, -action[-1])
-            #commands = [l+(a+1)/2*(u-l) for a,u,l in zip(self.action, self.upperLimits, self.lowerLimits)]
-            #for id, command, v ,f in zip(self.joints_id, commands, self.maxVelocity, self.maxForce):
-                #self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=self.p.POSITION_CONTROL, targetPosition=command, maxVelocity=v, force=f)
+            self.info['closed gripper'] = action[-1]>0
+            
+            commands = np.append(action, -action[-1]) # add the command for the last gripper joint
+
         return super().step(commands)
-
-
-
-    def compute_grip_info(self):
-        self.info['closed gripper'] = True
-        if self.joint_poses[-2] > 0.0003 or self.joint_poses[-2] < -0.0003:
-            self.info['closed gripper'] = False
-        if self.joint_poses[-1] > 0.0003 or self.joint_poses[-1] < -0.0003:
-            self.info['closed gripper'] = False
 
     def get_state(self):
 

@@ -37,14 +37,15 @@ class CrustCrawler(RobotGrasping):
             delta_pos=delta_pos,
             initial_position_object=[0, 0.4, 0],
             table_height=h,
-            mode = mode,
-            end_effector_id = 15,
-            n_actions = 7,
-            center_workspace = 0,
-            radius = 0.65,
+            mode=mode,
+            end_effector_id=15,
+            n_actions=7,
+            center_workspace=0,
+            radius=0.65,
             contact_ids=[12, 13, 14],
-            disable_collision_pair = [[11,14], [11,13]],
-            change_dynamics = {i:{'collisionMargin':0.04, 'lateralFriction':1} for i in (13, 14)}
+            disable_collision_pair=[[11,14], [11,13]],
+            allowed_collision_pair=[[13,14]], # allow the two fingers to collide
+            change_dynamics = {i:{'lateralFriction':1} for i in (13, 14)}
         )
 
         
@@ -66,7 +67,7 @@ class CrustCrawler(RobotGrasping):
     def step(self, action):
 
         if self.mode == 'inverse kinematic':
-            assert {"position", "quaternion", "gripper close"} <= set(self.action.keys())
+            #assert {"position", "quaternion", "gripper close"} <= set(self.action.keys())
             target_position = action[0:3]
             q = pyq.Quaternion(action[3:7]).normalised # wxyz
             target_orientation = [q[3], q[0], q[1], q[2]] # xyzw
@@ -97,12 +98,7 @@ class CrustCrawler(RobotGrasping):
 
 
     def get_state(self):
-        positions = [0]*(self.n_joints-1)
-        for i,j in enumerate(self.joint_ids[:-1]):
-            pos = self.p.getJointState(self.robot_id, j)[0]
-            low = self.lowerLimits[i]
-            high = self.upperLimits[i]
-            positions[i] = 2*(pos-high)/(high-low) + 1
+        positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joint_ids[:-1]), self.upperLimits[:-1], self.lowerLimits[:-1])]
         return positions, self.p.getLinkState(self.robot_id, self.end_effector_id)
 
 if __name__ == "__main__": # testing
