@@ -12,9 +12,19 @@ from gym_baxter_grabbing.envs.xacro import _process
 
 class CrustCrawler(RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', random_obj=False, delta_pos=[0, 0],
-                 steps_to_roll=1, mode='joint positions', random_var=0,
-                 limit_scale=0.3):
+    def __init__(self,
+        display=False,
+        obj='cube',
+        random_obj=False,
+        delta_pos=[0, 0],
+        steps_to_roll=1,
+        mode='joint positions',
+        random_var=0,
+        limit_scale=0.3,
+        reset_random_initial_object_pose=None,
+        object_position=[0, 0.4, 0],
+        object_xyzw=[0,0,0,1]
+    ):
         
         if (not (isinstance(limit_scale, int) or isinstance(limit_scale, float))) or limit_scale<0:
             raise NameError(f"The limit_scale value must be a positive scalar")
@@ -35,7 +45,9 @@ class CrustCrawler(RobotGrasping):
             steps_to_roll=steps_to_roll,
             random_var=random_var,
             delta_pos=delta_pos,
-            initial_position_object=[0, 0.4, 0],
+            reset_random_initial_object_pose=reset_random_initial_object_pose,
+            object_position=object_position,
+            object_xyzw=object_xyzw,
             table_height=h,
             mode=mode,
             end_effector_id=15,
@@ -84,9 +96,15 @@ class CrustCrawler(RobotGrasping):
         elif self.mode == 'joint positions':
             # we want one action per joint (gripper is composed by 2 joints but considered as one)
             assert len(action)==self.n_actions #and np.max(self.action)<=1 and np.min(self.action)>=-1
-            self.info['closed gripper'] = action[-1]>0
+            self.info['closed gripper'] = action[-1]<0
             # add the command for the last gripper joint
             commands = np.append(action, -action[-1])
+        
+        elif self.mode == 'joint torques':
+            # control the two fingers in positions
+            for id, a, v, f, u, l in zip(self.joint_ids[-2:], (action[-1], -action[-1]), self.maxVelocity[-2:], self.maxForce[-2:], self.upperLimits[-2:], self.lowerLimits[-2:]):
+                self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=self.p.POSITION_CONTROL, targetPosition=l+(a+1)/2*(u-l), maxVelocity=v, force=f)
+            commands = action[:-1]
 
         return super().step(commands)
 

@@ -49,7 +49,7 @@ class PepperGrasping(RobotGrasping):
         if self.mode == 'joint posisitons':
             # we want one action per joint, all fingers are controlled with LHand
             assert(len(action) == self.n_actions)
-            self.info['closed gripper'] = action[-1]>0
+            self.info['closed gripper'] = action[-1]<0
             commands = (np.array(action)+1)/2*(self.upperLimits-self.lowerLimits) + self.lowerLimits
 
         # apply the commands

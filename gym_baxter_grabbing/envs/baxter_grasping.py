@@ -31,16 +31,23 @@ def accurateIK(bodyId, end_effector_id, targetPosition, targetOrientation, lower
 
 class BaxterGrasping(RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', delta_pos=[0, 0],
-                 steps_to_roll=1, mode='joint positions', y_pose=0.12, random_var=None,
-                 finger="extended_narrow", slot=3, tip="basic_soft", grasp="inner", limit_scale=0.13):
+    def __init__(self,
+        display=False,
+        obj='cube',
+        delta_pos=[0, 0],
+        steps_to_roll=1,
+        mode='joint positions',
+        random_var=None,
+        finger="extended_narrow",
+        slot=3,
+        tip="basic_soft",
+        grasp="inner",
+        limit_scale=0.13,
+        reset_random_initial_object_pose=None,
+        object_position=[0, 0.12, 0],
+        object_xyzw=[0,0,0,1]
+    ):
         
-        self.y_pos = y_pose
-        self.mode = mode
-        if mode == 'joint positions':
-            self.joints_id = [34, 35, 36, 37, 38, 40, 41, 49, 51]
-            #self.ids_in_ranges = [10, 11, 12, 13, 14, 15, 16, 17, 18]
-            self.n_joints = len(self.joints_id)
             
         obj = obj.strip()
         cwd = Path(__file__).parent
@@ -81,7 +88,9 @@ class BaxterGrasping(RobotGrasping):
             steps_to_roll=steps_to_roll,
             random_var=random_var,
             delta_pos=delta_pos,
-            initial_position_object=[0, 0.12, 0],
+            object_position=object_position,
+            object_xyzw = object_xyzw,
+            reset_random_initial_object_pose=reset_random_initial_object_pose,
             table_height=0.76,
             mode = mode,
             end_effector_id = 48,
@@ -119,7 +128,7 @@ class BaxterGrasping(RobotGrasping):
         
 
     def step(self, action):
-
+        assert(len(action) == self.n_actions)
         if self.mode == 'inverse kinematic':
             target_position = self.action[0:3]
             target_orientation = self.action[3:7]
@@ -132,25 +141,27 @@ class BaxterGrasping(RobotGrasping):
                                     self.upperLimits, self.jointRanges, self.restPoses, useNullSpace=True)
             setMotors(self.robot_id, jointPoses)
 
-            # explicitly control the gripper
-            target_gripper_pos = (target_gripper + 1) * 0.010416
-            self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=49, controlMode=self.p.POSITION_CONTROL,
-                                    targetPosition=target_gripper_pos, force=MAX_FORCE)
-            self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=51, controlMode=self.p.POSITION_CONTROL,
-                                    targetPosition=-target_gripper_pos, force=MAX_FORCE)
+            
 
         if self.mode == 'joint positions':
             # we want one action per joint (gripper is composed by 2 joints but considered as one)
-            assert(len(action) == self.n_actions)
-            self.info['closed gripper'] = action[-1]>0
+            
+            self.info['closed gripper'] = action[-1]<0
             
             commands = np.append(action, -action[-1]) # add the command for the last gripper joint
+
+        if self.mode == 'joint torques':
+            # joint are controled with torque except the griper which is binary: opened/closed
+            target_gripper_pos = (action[-1] + 1) * 0.010416
+            self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=49, controlMode=self.p.POSITION_CONTROL, targetPosition=target_gripper_pos, force=self.maxForce[-2], maxVelocity=self.maxVelocity[-2])
+            self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=51, controlMode=self.p.POSITION_CONTROL, targetPosition=-target_gripper_pos, force=self.maxForce[-1], maxVelocity=self.maxVelocity[-1])
+            commands = action[:-1] # send commands without the gripper
 
         return super().step(commands)
 
     def get_state(self):
 
-        positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joints_id[:-1]), self.upperLimits[:-1], self.lowerLimits[:-1])]
+        positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joint_ids[:-1]), self.upperLimits[:-1], self.lowerLimits[:-1])]
         return positions, self.p.getLinkState(self.robot_id, self.end_effector_id)
 
 
