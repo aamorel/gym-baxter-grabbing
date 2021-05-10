@@ -95,6 +95,7 @@ class BaxterGrasping(RobotGrasping):
             mode = mode,
             end_effector_id = 48,
             joint_ids = [34, 35, 36, 37, 38, 40, 41, 49, 51],
+            n_control_gripper=2,
             n_actions = 8,
             center_workspace = 34,
             radius = 1.2,

@@ -48,6 +48,7 @@ class KukaGrasping(RobotGrasping):
             table_height=0.8,
             joint_ids=[0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13],
             contact_ids=[8, 9, 10, 11, 12, 13],
+            n_control_gripper=4,
             mode = mode,
             end_effector_id = 6,
             n_actions = 9,
@@ -59,7 +60,7 @@ class KukaGrasping(RobotGrasping):
                 11:{'lateralFriction':1, 'jointLowerLimit':0.05, 'jointUpperLimit':0.5},  # b'base_right_finger_joint
                 10:{'lateralFriction':1, 'jointLowerLimit':-0.3, 'jointUpperLimit':0.1},   # b'left_base_tip_joint
                 13:{'lateralFriction':1, 'jointLowerLimit':-0.1, 'jointUpperLimit':0.3}   # b'right_base_tip_joint
-            } | {i:{'maxJointVelocity':1, 'jointLimitForce':50} for i in range(7)} # decrease max force & velocity
+            } | {i:{'maxJointVelocity':0.5, 'jointLimitForce':50} for i in range(7)} # decrease max force & velocity
         )
         if self.obstacle_pos is not None:
             # create the obstacle object at the required location

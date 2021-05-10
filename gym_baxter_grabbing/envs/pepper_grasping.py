@@ -30,6 +30,7 @@ class PepperGrasping(RobotGrasping):
             table_height=0.8,
             end_effector_id=self.pepper.joint_dict['LHand'].getIndex(),
             joint_ids=[self.pepper.joint_dict[joint].getIndex() for joint in self.joints],
+            n_control_gripper=1, # the left hand is controller with one input
             n_actions=len(self.joints),
             center_workspace=0,
             radius=1,

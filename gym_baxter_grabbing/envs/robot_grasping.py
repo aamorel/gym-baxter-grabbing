@@ -62,6 +62,7 @@ class RobotGrasping(gym.Env):
         mode: str = 'joint positions', # the control mode, either 'joint positions', 'joint velocities', 'joint torques', 'inverse kinematic'
         end_effector_id: int = -1, # link id of the end effector
         joint_ids: Optional[npt.ArrayLike] = None, # array of int, ids of joints to control
+		n_control_gripper: int = 1, # number of controllable joints belonging to the gripper
         n_actions: int = 1, # nb of dimensions of the action space
         center_workspace: Union[int, npt.ArrayLike] = -1, # position of the center of the sphere, supposing the workspace is a sphere (robotic arm) and the robot is not moving, if int, the position of the robot link is used
         radius: float = 1, # radius of the workspace
@@ -85,6 +86,7 @@ class RobotGrasping(gym.Env):
         self.p = BulletClient(connection_mode=p.GUI if display else p.DIRECT)
         self.physicsClientId = self.p._client
         self.end_effector_id = end_effector_id
+        self.n_control_gripper = n_control_gripper
         self.mode = mode
         self.n_actions = n_actions
         self.radius = radius
@@ -302,11 +304,11 @@ class RobotGrasping(gym.Env):
         aabbMin, aabbMax = self.p.getAABB(self.obj_id)
         self.obj_length = np.linalg.norm(np.array(aabbMax)- np.array(aabbMin)).item() # approximate maximum length of the object
 
-    def reset(self, delta_pos: npt.ArrayLike = [0,0], yaw: float = 0):
+    def reset(self, delta_pos: npt.ArrayLike = [0,0], yaw: float = 0, object_position=None, object_xyzw=None):
         """ delta_pos and self.delta_pos add up. It is not a transform: rotate and translate"""
         assert not self.has_reset_object, "you can not remove/change the object and restore a state: use either reset() or reset_object(), not both"
         self.p.restoreState(self.save_state)
-        if (not np.any(delta_pos)) and yaw==0 and (not self.reset_random_initial_object_pose) and (not self.random_var):
+        if (not np.any(delta_pos)) and yaw==0 and (not self.reset_random_initial_object_pose) and (not self.random_var) and object_position is None and object_xyzw is None:
             return self.get_obs() # do not need to change the position
         elif self.reset_random_initial_object_pose:
             pos, qua = self.reset_random_pose_object()
@@ -318,8 +320,10 @@ class RobotGrasping(gym.Env):
             pos[0] += random.gauss(0, self.random_var)
             pos[1] += random.gauss(0, self.random_var)
         _, qua = self.p.multiplyTransforms([0,0,0], [0, 0, np.sin(yaw/2), np.cos(yaw/2)], [0,0,0], qua) # apply yaw rotation
+        pos = object_position or pos # overwrite if absolute position is given
+        qua = object_xyzw or qua
         self.p.resetBasePositionAndOrientation(self.obj_id, pos, qua)
-        for _ in range(240): self.p.stepSimulation() # let the object stabilize
+        #for _ in range(240): self.p.stepSimulation() # let the object stabilize
         return np.maximum(np.minimum(self.get_obs(),1),-1)
         
     def get_obs(self) -> npt.ArrayLike:
