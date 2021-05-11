@@ -20,9 +20,10 @@ class KukaGrasping(RobotGrasping):
         delta_pos=[0, 0],
         obstacle_pos=None,
         obstacle_size=0.1,
-        reset_random_initial_object_pose=None,
+        reset_random_initial_state=None,
         object_position=[0, 0.1, 0],
-        object_xyzw=[0,0,0,1]
+        object_xyzw=[0,0,0,1],
+        joint_positions=None
 	):
         
         self.obstacle_pos = None if obstacle_pos is None else np.array(obstacle_pos)
@@ -42,9 +43,10 @@ class KukaGrasping(RobotGrasping):
             steps_to_roll=steps_to_roll,
             random_var=random_var,
             delta_pos=delta_pos,
-            reset_random_initial_object_pose=reset_random_initial_object_pose,
-            object_position=[0, 0.1, 0],
+            reset_random_initial_state=reset_random_initial_state,
+            object_position=object_position,
             object_xyzw=object_xyzw,
+            joint_positions=joint_positions,
             table_height=0.8,
             joint_ids=[0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13],
             contact_ids=[8, 9, 10, 11, 12, 13],

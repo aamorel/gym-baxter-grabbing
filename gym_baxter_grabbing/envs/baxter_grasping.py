@@ -43,9 +43,10 @@ class BaxterGrasping(RobotGrasping):
         tip="basic_soft",
         grasp="inner",
         limit_scale=0.13,
-        reset_random_initial_object_pose=None,
+        reset_random_initial_state=None,
         object_position=[0, 0.12, 0],
-        object_xyzw=[0,0,0,1]
+        object_xyzw=[0,0,0,1],
+        joint_positions=None
     ):
         
             
@@ -79,8 +80,15 @@ class BaxterGrasping(RobotGrasping):
         if not urdf.is_file(): # create the file if doesn't exist
             _process(cwd/"robots/baxter_description/urdf/baxter_symmetric.xacro", dict(output=urdf, just_deps=False, xacro_ns=True, verbosity=1, mappings={'finger':finger, "slot":str(slot), 'tip':tip+"_tip", "grasp":grasp, "limit_scale":str(limit_scale)})) # convert xacro to urdf
         
+        def baxter():
+            b = self.p.loadURDF(fileName=str(urdf), basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=self.p.URDF_USE_SELF_COLLISION)
+            for i,v in zip([34, 35, 36, 37, 38, 40, 41,  12, 13, 14, 15, 16, 18, 19], [-0.08, -1.0, -1.19, 1.94, 0.67, 1.03, -0.50,  0.08, -1.0,  1.19, 1.94, -0.67, 1.03, 0.50]):
+                self.p.resetJointState(b, i, targetValue=v) # put baxter in untuck position
+            return b
+            
+        
         super().__init__(
-            robot=lambda: self.p.loadURDF(fileName=str(urdf), basePosition=[0, -0.8, -.074830], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=self.p.URDF_USE_SELF_COLLISION),
+            robot=baxter,
             display=display,
             obj=obj,
             pos_cam=[1.2, 180, -40],
@@ -90,7 +98,8 @@ class BaxterGrasping(RobotGrasping):
             delta_pos=delta_pos,
             object_position=object_position,
             object_xyzw = object_xyzw,
-            reset_random_initial_object_pose=reset_random_initial_object_pose,
+            joint_positions=joint_positions,
+            reset_random_initial_state=reset_random_initial_state,
             table_height=0.76,
             mode = mode,
             end_effector_id = 48,
@@ -121,15 +130,11 @@ class BaxterGrasping(RobotGrasping):
             return obj
         
 
-        
-    def reset_robot(self):
-        for i,v in zip([34, 35, 36, 37, 38, 40, 41,  12, 13, 14, 15, 16, 18, 19], [-0.08, -1.0, -1.19, 1.94, 0.67, 1.03, -0.50,  0.08, -1.0,  1.19, 1.94, -0.67, 1.03, 0.50]):
-            self.p.resetJointState(self.robot_id, i, targetValue=v) # put baxter in untuck position
 
         
 
     def step(self, action):
-        assert(len(action) == self.n_actions)
+        
         if self.mode == 'inverse kinematic':
             target_position = self.action[0:3]
             target_orientation = self.action[3:7]
@@ -159,10 +164,5 @@ class BaxterGrasping(RobotGrasping):
             commands = action[:-1] # send commands without the gripper
 
         return super().step(commands)
-
-    def get_state(self):
-
-        positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joint_ids[:-1]), self.upperLimits[:-1], self.lowerLimits[:-1])]
-        return positions, self.p.getLinkState(self.robot_id, self.end_effector_id)
 
 

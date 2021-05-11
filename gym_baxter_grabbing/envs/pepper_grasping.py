@@ -10,8 +10,19 @@ from gym_baxter_grabbing.envs.robot_grasping import RobotGrasping
 
 class PepperGrasping(RobotGrasping):
 
-    def __init__(self, display=False, obj='cube', random_obj=False, steps_to_roll=1, random_var=None,
-                 delta_pos=[0, 0], mode='joint positions'):
+    def __init__(
+        self,
+        display=False,
+        obj='cube',
+        random_obj=False,
+        steps_to_roll=1,
+        random_var=None,
+        delta_pos=[0,0],
+        mode='joint positions',
+        object_position=[0, -0.15, 0],
+        object_xyzw=[0,0,0,1],
+        joint_positions=None
+    ):
                  
         self.pepper = q.PepperVirtual()
         self.joints = ['HipRoll', 'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'LHand']
@@ -26,7 +37,9 @@ class PepperGrasping(RobotGrasping):
             steps_to_roll=steps_to_roll,
             random_var=random_var,
             delta_pos=delta_pos,
-            initial_position_object=[0, -0.15, 0],
+            object_position=object_position,
+            object_xyzw=object_xyzw,
+            joint_positions=joint_positions,
             table_height=0.8,
             end_effector_id=self.pepper.joint_dict['LHand'].getIndex(),
             joint_ids=[self.pepper.joint_dict[joint].getIndex() for joint in self.joints],

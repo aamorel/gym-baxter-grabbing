@@ -21,9 +21,10 @@ class CrustCrawler(RobotGrasping):
         mode='joint positions',
         random_var=0,
         limit_scale=0.3,
-        reset_random_initial_object_pose=None,
+        reset_random_initial_state=None,
         object_position=[0, 0.4, 0],
-        object_xyzw=[0,0,0,1]
+        object_xyzw=[0,0,0,1],
+        joint_positions=None
     ):
         
         if (not (isinstance(limit_scale, int) or isinstance(limit_scale, float))) or limit_scale<0:
@@ -45,9 +46,10 @@ class CrustCrawler(RobotGrasping):
             steps_to_roll=steps_to_roll,
             random_var=random_var,
             delta_pos=delta_pos,
-            reset_random_initial_object_pose=reset_random_initial_object_pose,
+            reset_random_initial_state=reset_random_initial_object_pose,
             object_position=object_position,
             object_xyzw=object_xyzw,
+            joint_positions=joint_positions,
             table_height=h,
             mode=mode,
             end_effector_id=15,
@@ -116,7 +118,7 @@ class CrustCrawler(RobotGrasping):
             self.p.resetJointState(self.robot_id, i, targetValue=0)
 
 
-    def get_state(self):
+    def get_joint_state(self):
         positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joint_ids[:-1]), self.upperLimits[:-1], self.lowerLimits[:-1])]
         return positions, self.p.getLinkState(self.robot_id, self.end_effector_id)
 

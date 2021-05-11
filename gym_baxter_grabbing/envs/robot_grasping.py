@@ -52,17 +52,19 @@ class RobotGrasping(gym.Env):
         steps_to_roll: int = 1, # nb time to call p.stepSimulation within one step
         random_var: Optional[float] = 0, # the variance of the positon noise of the object
         delta_pos: npt.ArrayLike = [0, 0], # position displacement of the object, it won't be reseted with reset()
-        object_position: npt.ArrayLike = [0., 0., 0.], # initial position of te object during loading, then it will fall
-        object_xyzw: npt.ArrayLike = [0,0,0,1], #initial position of te object during loading
+        object_position: npt.ArrayLike = [0., 0., 0.], # initial position of the object during loading, then it will fall
+        object_xyzw: npt.ArrayLike = [0,0,0,1], # initial orientation of the object during loading
+        joint_positions: Optional[npt.ArrayLike] = None, # initial joint positions
         # True: each time reset() is called, the object has a random initial position
         # False: the object has a random initial position but reset() won't randomize the position
         # None: there is no random position applied at any stage
-        reset_random_initial_object_pose: Optional[bool] = None, # if not None, it overwrites object_position and object_xyzw
+        reset_random_initial_state: Optional[bool] = None, # if not None, it overwrites object_position and object_xyzw
+        initial_state: Optional[Dict[str, npt.ArrayLike]] = None, # set the initial state, it must be the output of get_state()
         table_height: Optional[float] = 0.7, # the height of the table
         mode: str = 'joint positions', # the control mode, either 'joint positions', 'joint velocities', 'joint torques', 'inverse kinematic'
         end_effector_id: int = -1, # link id of the end effector
         joint_ids: Optional[npt.ArrayLike] = None, # array of int, ids of joints to control
-		n_control_gripper: int = 1, # number of controllable joints belonging to the gripper
+        n_control_gripper: int = 1, # number of controllable joints belonging to the gripper
         n_actions: int = 1, # nb of dimensions of the action space
         center_workspace: Union[int, npt.ArrayLike] = -1, # position of the center of the sphere, supposing the workspace is a sphere (robotic arm) and the robot is not moving, if int, the position of the robot link is used
         radius: float = 1, # radius of the workspace
@@ -75,7 +77,9 @@ class RobotGrasping(gym.Env):
         self.obj = obj.strip()
         self.object_position = object_position
         self.object_xyzw = object_xyzw
-        self.reset_random_initial_object_pose = reset_random_initial_object_pose
+        self.joint_positions = joint_positions
+        self.reset_random_initial_state = reset_random_initial_state
+        self.initial_state = initial_state
         self.display = display
         self.pos_cam = pos_cam
         self.gripper_display = gripper_display
@@ -111,7 +115,6 @@ class RobotGrasping(gym.Env):
         self.robot_id = robot()
         self.joint_ids = np.array([i for i in range(self.p.getNumJoints(self.robot_id)) if self.p.getJointInfo(self.robot_id, i)[3]>-1] if joint_ids is None else joint_ids, dtype=int)
         self.n_joints = 8 if mode=='inverse kinematic' else len(self.joint_ids)
-        self.reset_robot()
         
         self.center_workspace_cartesian = np.array(self.p.getLinkState(self.robot_id, center_workspace)[0] if isinstance(center_workspace, int) else center_workspace)
         self.center_workspace = self.p.multiplyTransforms(*self.p.invertTransform(*p.getBasePositionAndOrientation(self.robot_id)), self.center_workspace_cartesian, [0,0,0,1]) # the pose of center_workspace in the robot frame
@@ -155,10 +158,15 @@ class RobotGrasping(gym.Env):
                                                  parentLinkIndex=self.end_effector_id)
                                                  for end, color in zip(np.eye(3)*0.2, np.eye(3))]
         
+
+        if joint_positions is not None: # set the arm, the gripper is not important
+            for id, a in zip(self.joint_ids, joint_positions):
+                self.p.resetJointState(self.robot_id, id, targetValue=a)
+					
         for _ in range(100): self.p.stepSimulation() # let the world run for a bit
-        
-        if self.reset_random_initial_object_pose is False: # set a random position that won't change
-            self.p.resetBasePositionAndOrientation(self.obj_id, *self.reset_random_pose_object())
+		
+        if self.reset_random_initial_state is False: # set a random position that won't change
+            self.reset_random_state()
         
         if self.mode == 'joint torques': # disable motors to use torque control, with a small joint friction
             for id in self.joint_ids:
@@ -169,12 +177,21 @@ class RobotGrasping(gym.Env):
         self.action_space = gym.spaces.Box(-1., 1., shape=(self.n_actions,), dtype='float32')
         self.observation_space = gym.spaces.Box(-1., 1., shape=(13+len(self.joint_ids)*2,), dtype='float32') # TODO: add image if asked
         self.info = {
-            'contact object table':[],
-            'contact robot table':[],
-            'applied joint motor torques':np.zeros(self.n_joints),
-            'joint positions':np.zeros(self.n_joints),
-            'joint velocities':np.zeros(self.n_joints)
+            'closed gripper': False,
+            'contact object table': [],
+            'contact robot table': [],
+            'applied joint motor torques': np.zeros(self.n_joints),
+            'joint positions': np.zeros(self.n_joints),
+            'joint velocities': np.zeros(self.n_joints)
         }
+        oldstep = self.step
+        self.gripper = 1 # open
+        def newstep(action): # decorate step
+            assert(len(action) == self.n_actions)
+            self.gripper = action[-1]
+            self.info['closed gripper'] = action[-1]<0
+            return oldstep(action)
+        self.step = newstep
 
 
     def step(self, action: Optional[npt.ArrayLike]=None) -> Tuple[npt.ArrayLike, bool, bool, Dict[str, Any]]: # actions are in [-1,1]
@@ -209,10 +226,10 @@ class RobotGrasping(gym.Env):
 
         if self.display and self.gripper_display:
             self.lines = [self.p.addUserDebugLine([0, 0, 0], end, color, lineWidth=self.line_width,
-                                             replaceItemUniqueId=id,
-                                             parentObjectUniqueId=self.robot_id,
-                                             parentLinkIndex=self.end_effector_id)
-											 for end, color, id in zip(np.eye(3)*0.2, np.eye(3), self.lines)]
+                                            replaceItemUniqueId=id,
+                                            parentObjectUniqueId=self.robot_id,
+                                            parentLinkIndex=self.end_effector_id)
+                                            for end, color, id in zip(np.eye(3)*0.2, np.eye(3), self.lines)]
 
         for c in self.info['contact object robot']:
             penetration = penetration or c[8]<-0.005 # if contactDistance is negative, there is a penetration, this is bad
@@ -232,18 +249,35 @@ class RobotGrasping(gym.Env):
         """ return a dict containing informations of the primitive shape or a str (urdf file) """
         return obj
         
-    def get_object_pose(self) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
-        return self.p.getBasePositionAndOrientation(self.obj_id)
+    def get_state(self) -> Dict[str, npt.ArrayLike]:
+        """ return unnormalized object pose and joint positions. The returned dict can be passed to initialize another environment."""
+        pos, qua = self.p.getBasePositionAndOrientation(self.obj_id)
+        joint_positions = [s[0] for s in self.p.getJointStates(self.robot_id, self.joint_ids)]
+        return {'object_position':pos, 'object_xyzw':qua, 'joint_positions': joint_positions}
         
-    def reset_random_pose_object(self) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
+    def reset_random_state(self) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
         """
+        Put the robot in a random configuration
         generate a random position of the object on the table, supposing the center_workspace is above the table (the robot can reach with the straight arm) and the robot is not too far from the table!
         If there is no table, positions are generated on a circle with center_workspace as the center.
         """
+        for i in range(1000): # try to generate a random configuration of the robot
+            for id, u, l in zip(self.joint_ids, self.upperLimits, self.lowerLimits):
+                self.p.resetJointState(self.robot_id, id, targetValue=l+(self.rng.random()+1)/2*(u-l))
+            if self.table_id is not None and len(self.p.getContactPoints(bodyA=self.robot_id,bodyB=self.table_id))>0:
+                continue # repeat, there is a collision with the table
+            for c in self.p.getContactPoints(bodyA=self.robot_id,bodyB=self.robot_id):
+                if set(c[3:5]) not in self.allowed_collision_pair:
+                    break # repeat, there is an autocollision
+            else: # there is no collision, stop the loop
+                break
+        else: # we did 1000 trials
+            raise Exception('Failed 1000 times to generate a random configuration of the robot')
+        
         obj_pos, obj_qua = self.p.getBasePositionAndOrientation(self.obj_id)
         rand_qua = self.rng.random(4)
         rand_qua /= np.linalg.norm(rand_qua)
-        for i in range(1000): # 1000 trials
+        for i in range(1000): # try to generate a random pose of the object
             if self.table_id is None:
                 rand_pos = self.radius*self.rng.random(size=(2,))
                 rand_pos = np.hstack([rand_pos+self.center_workspace_cartesian, obj_pos[2]])
@@ -253,18 +287,17 @@ class RobotGrasping(gym.Env):
                 rand_pos = np.hstack([rand_pos+self.table_pos[:2], obj_pos[2]])
 
             if np.linalg.norm(rand_pos - self.center_workspace_cartesian) < self.radius-0.2: # 20cm margin of the reachable space
-                return rand_pos, rand_qua
+                self.p.resetBasePositionAndOrientation(self.obj_id, rand_pos, rand_qua)
+                return
         
         raise Exception('Failed 1000 times to generate a random position of the object, the robot is too far from the table or the radius is not well tuned')
         
         
     def load_object(self, obj:Optional[str] = None, delta_pos: npt.ArrayLike = [0,0]):
-        pos = [self.object_position[0]+delta_pos[0],
-               self.object_position[1]+delta_pos[1],
-               self.object_position[2]]
+        pos = np.array(self.object_position)
+        pos[:2] += delta_pos
         if self.random_var:
-            pos[0] += random.gauss(0, self.random_var)
-            pos[1] += random.gauss(0, self.random_var)
+            pos[:2] += self.rng.normal(scale=self.random_var, size=2)
 
         # create object to grab
         if isinstance(obj, dict):
@@ -272,12 +305,12 @@ class RobotGrasping(gym.Env):
             elif obj["shape"] == 'cuboid':
                 infoShape =  {"shapeType":self.p.GEOM_BOX, "halfExtents":[obj["x"]/2, obj["y"]/2, obj[z]/2]}
                 obj_to_grab_id = self.p.createMultiBody(baseMass=1, baseCollisionShapeIndex=self.p.createCollisionShape(**infoShape), baseVisualShapeIndex=self.p.createVisualShape(**infoShape, rgbaColor=[1, 0, 0, 1]))
-                self.p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+                self.p.resetBasePositionAndOrientation(obj_to_grab_id, pos, self.object_xyzw)
                 
             elif obj["shape"] == 'cube':
-                obj_to_grab_id = self.p.loadURDF("cube_small.urdf", pos, globalScaling=obj["unit"]/0.05) # cube_small is a 5cm 0.1kg cube
+                obj_to_grab_id = self.p.loadURDF("cube_small.urdf", pos, self.object_xyzw, globalScaling=obj["unit"]/0.05) # cube_small is a 5cm 0.1kg cube
             elif obj["shape"] == 'sphere':
-                obj_to_grab_id = self.p.loadURDF("sphere_small.urdf", pos, globalScaling=obj["radius"]/0.06) # sphere_small is a 6cm diameter 0.1kg sphere
+                obj_to_grab_id = self.p.loadURDF("sphere_small.urdf", pos, self.object_xyzw, globalScaling=obj["radius"]/0.06) # sphere_small is a 6cm diameter 0.1kg sphere
                 self.p.changeDynamics(obj_to_grab_id, -1, rollingFriction=1e-5, spinningFriction=1e-5) # allow the sphere to roll
 
             elif obj["shape"] == 'cylinder':
@@ -285,13 +318,13 @@ class RobotGrasping(gym.Env):
                 col_id = self.p.createCollisionShape(**infoShape, height=obj["z"])
                 viz_id = self.p.createVisualShape(**infoShape, length=obj["z"], rgbaColor=[1, 0, 0, 1])
                 obj_to_grab_id = self.p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
-                self.p.resetBasePositionAndOrientation(obj_to_grab_id, pos, [0, 0, 0, 1])
+                self.p.resetBasePositionAndOrientation(obj_to_grab_id, pos, self.object_xyzw)
             self.p.changeDynamics(obj_to_grab_id, -1, lateralFriction=0.7)
         elif isinstance(obj, str):
             urdf = Path(__file__).parent/"objects"/obj/f"{obj}.urdf"
             if not urdf.exists(): raise ValueError(str(urdf) + " doesn't exist")
             try:
-                obj_to_grab_id = self.p.loadURDF(str(urdf), pos) # the scale is set in the urdf file
+                obj_to_grab_id = self.p.loadURDF(str(urdf), pos, self.object_xyzw) # the scale is set in the urdf file
             except self.p.error as e:
                 raise self.p.error(f"{e}: "+path)
         #elif obj is None:
@@ -308,12 +341,11 @@ class RobotGrasping(gym.Env):
         """ delta_pos and self.delta_pos add up. It is not a transform: rotate and translate"""
         assert not self.has_reset_object, "you can not remove/change the object and restore a state: use either reset() or reset_object(), not both"
         self.p.restoreState(self.save_state)
-        if (not np.any(delta_pos)) and yaw==0 and (not self.reset_random_initial_object_pose) and (not self.random_var) and object_position is None and object_xyzw is None:
+        if (not np.any(delta_pos)) and yaw==0 and (not self.reset_random_initial_state) and (not self.random_var) and object_position is None and object_xyzw is None:
             return self.get_obs() # do not need to change the position
-        elif self.reset_random_initial_object_pose:
-            pos, qua = self.reset_random_pose_object()
-        else:
-            pos, qua = self.p.getBasePositionAndOrientation(self.obj_id)
+        elif self.reset_random_initial_state:
+            self.reset_random_state()
+        pos, qua = self.p.getBasePositionAndOrientation(self.obj_id)
         
         pos = [pos[0]+delta_pos[0], pos[1]+delta_pos[1], pos[2]]
         if self.random_var:
@@ -367,5 +399,7 @@ class RobotGrasping(gym.Env):
             self.p.disconnect()
             self.physicsClientId = -1
         
-    def get_state(self):
-        return None
+    def get_joint_state(self):
+        """ Return normalized joint positions+gripper state open(-1)/close(1) and the end effector state """
+        positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joint_ids[:-self.n_control_gripper]), self.upperLimits, self.lowerLimits)]
+        return positions+[self.gripper], self.p.getLinkState(self.robot_id, self.end_effector_id)
