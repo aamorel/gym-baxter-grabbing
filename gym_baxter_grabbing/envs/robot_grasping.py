@@ -383,7 +383,8 @@ class RobotGrasping(gym.Env):
         self.info['object linear velocity'], self.info['object angular velocity'] = obj_vel
         jointStates = self.p.getJointStates(self.robot_id, self.joint_ids)
         pos, vel = [0]*self.n_joints, [0]*self.n_joints
-        for i, state, u, l, v in zip(range(self.n_joints), jointStates, self.upperLimits, self.lowerLimits, self.maxVelocity):
+        for i, u, l, v, id in zip(range(self.n_joints), self.upperLimits, self.lowerLimits, self.maxVelocity, self.joint_ids):
+            state = self.p.getJointState(self.robot_id, id)
             pos[i] = 2*(state[0]-u)/(u-l) + 1 # set between -1 and 1
             vel[i] = state[1]/v # set between -1 and 1
             self.info['joint positions'][i], self.info['joint velocities'][i], jointReactionForces, self.info['applied joint motor torques'][i] = state
