@@ -117,11 +117,11 @@ class BaxterGrasping(RobotGrasping):
     def get_object(self, obj=None):
         # create object to grab
         if obj == 'cuboid':
-            return {"shape":'cuboid', "x":0.046, "y":0.1, "z":0.216}
+            return {"shape":'cuboid', "x":0.046, "y":0.1, "z":0.216, "lateralFriction":0.5}
         elif obj == 'cube':
-            return {"shape": 'cube', "unit":0.055}
+            return {"shape": 'cube', "unit":0.055, "lateralFriction":0.5}
         elif obj == 'sphere':
-            return {"shape":'sphere', "radius":0.055}
+            return {"shape":'sphere', "radius":0.055, "lateralFriction":0.8}
         elif obj == 'cylinder':
             return {"shape":'cylinder', "radius":0.032, "z":0.15}
         elif obj == 'paper roll':

@@ -124,6 +124,8 @@ class RobotGrasping(gym.Env):
         self.lowerLimits, self.upperLimits, self.maxForce, self.maxVelocity = np.zeros(self.n_joints), np.zeros(self.n_joints), np.zeros(self.n_joints), np.zeros(self.n_joints)
         for i, id in enumerate(self.joint_ids):
             self.lowerLimits[i], self.upperLimits[i], self.maxForce[i], self.maxVelocity[i] = self.p.getJointInfo(self.robot_id, id)[8:12]
+            self.p.enableJointForceTorqueSensor(self.robot_id, id)
+            #self.p.changeDynamics(self.robot_id, linkIndex=id, jointLowerLimit=self.lowerLimits[i], jointUpperLimit=self.upperLimits[i])
         
         for id, args in change_dynamics.items(): # change dynamics
             self.p.changeDynamics(self.robot_id, linkIndex=id, **args)
@@ -175,22 +177,28 @@ class RobotGrasping(gym.Env):
         
         self.save_state = self.p.saveState()
         self.action_space = gym.spaces.Box(-1., 1., shape=(self.n_actions,), dtype='float32')
-        self.observation_space = gym.spaces.Box(-1., 1., shape=(13+len(self.joint_ids)*2,), dtype='float32') # TODO: add image if asked
+        self.observation_space = gym.spaces.Box(-1., 1., shape=(15+len(self.joint_ids)*3,), dtype='float32') # TODO: add image if asked
+        #high = np.array([np.inf, np.inf, np.inf, 1, 1, 1, 1, 1, 1, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, *[1 for i in self.joint_ids], *[np.inf for i in self.joint_ids]])
+        #self.observation_space = gym.spaces.Box(-high, high, dtype='float32')
         self.info = {
             'closed gripper': False,
             'contact object table': [],
             'contact robot table': [],
+            'joint reaction forces': np.zeros(self.n_joints),
             'applied joint motor torques': np.zeros(self.n_joints),
             'joint positions': np.zeros(self.n_joints),
             'joint velocities': np.zeros(self.n_joints)
         }
+        self.last_action = np.zeros(self.n_actions)
         oldstep = self.step
         self.gripper = 1 # open
         def newstep(action): # decorate step
             assert(len(action) == self.n_actions)
             self.gripper = action[-1]
             self.info['closed gripper'] = action[-1]<0
-            return oldstep(action)
+            out = oldstep(action)
+            self.last_action = np.array(action)
+            return out
         self.step = newstep
 
 
@@ -203,6 +211,8 @@ class RobotGrasping(gym.Env):
         elif self.mode in {'joint torques'} and action is not None: # much harder and might not be transferable because requires very accurate URDF, center of mass, frictions...
             for _ in range(self.steps_to_roll):
                 self.p.setJointMotorControlArray(bodyIndex=self.robot_id, jointIndices=self.joint_ids[:la], controlMode=self.p.TORQUE_CONTROL, forces=action*self.maxForce[:la])
+                #for id, a, f in zip(self.joint_ids, action, self.maxForce):
+                    #self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=self.p.TORQUE_CONTROL, force=a*f)
                 self.p.stepSimulation()
         elif self.mode in {'joint velocities'} and action is not None:
             self.p.setJointMotorControlArray(bodyIndex=self.robot_id, jointIndices=self.joint_ids[:la], controlMode=self.p.VELOCITY_CONTROL, forces=self.maxForce[:la], targetVelocities=action*self.maxVelocity[:la])
@@ -319,7 +329,7 @@ class RobotGrasping(gym.Env):
                 viz_id = self.p.createVisualShape(**infoShape, length=obj["z"], rgbaColor=[1, 0, 0, 1])
                 obj_to_grab_id = self.p.createMultiBody(baseMass=1, baseCollisionShapeIndex=col_id, baseVisualShapeIndex=viz_id)
                 self.p.resetBasePositionAndOrientation(obj_to_grab_id, pos, self.object_xyzw)
-            self.p.changeDynamics(obj_to_grab_id, -1, lateralFriction=0.7)
+            self.p.changeDynamics(obj_to_grab_id, -1, lateralFriction=obj["lateralFriction"] if "lateralFriction" in obj else 0.7)
         elif isinstance(obj, str):
             urdf = Path(__file__).parent/"objects"/obj/f"{obj}.urdf"
             if not urdf.exists(): raise ValueError(str(urdf) + " doesn't exist")
@@ -337,11 +347,14 @@ class RobotGrasping(gym.Env):
         aabbMin, aabbMax = self.p.getAABB(self.obj_id)
         self.obj_length = np.linalg.norm(np.array(aabbMax)- np.array(aabbMin)).item() # approximate maximum length of the object
 
-    def reset(self, delta_pos: npt.ArrayLike = [0,0], yaw: float = 0, object_position=None, object_xyzw=None):
-        """ delta_pos and self.delta_pos add up. It is not a transform: rotate and translate"""
+    def reset(self, delta_pos: npt.ArrayLike = [0,0], yaw: float = 0, object_position=None, object_xyzw=None, joint_positions=None):
+        """
+        delta_pos and self.delta_pos are relative to the initial position (during init)
+        object_position, object_xyzw, joint_positions are absolute, they overwrite everything
+        """
         assert not self.has_reset_object, "you can not remove/change the object and restore a state: use either reset() or reset_object(), not both"
         self.p.restoreState(self.save_state)
-        if (not np.any(delta_pos)) and yaw==0 and (not self.reset_random_initial_state) and (not self.random_var) and object_position is None and object_xyzw is None:
+        if (not np.any(delta_pos)) and yaw==0 and (not self.reset_random_initial_state) and (not self.random_var) and object_position is None and object_xyzw is None and joint_positions is None:
             return self.get_obs() # do not need to change the position
         elif self.reset_random_initial_state:
             self.reset_random_state()
@@ -354,7 +367,10 @@ class RobotGrasping(gym.Env):
         _, qua = self.p.multiplyTransforms([0,0,0], [0, 0, np.sin(yaw/2), np.cos(yaw/2)], [0,0,0], qua) # apply yaw rotation
         pos = object_position or pos # overwrite if absolute position is given
         qua = object_xyzw or qua
+        joint_pos = joint_positions or [s[0] for s in self.p.getJointStates(self.robot_id, self.joint_ids)]
         self.p.resetBasePositionAndOrientation(self.obj_id, pos, qua)
+        for id, jp in zip(self.joint_ids, joint_pos):
+            self.p.resetJointState(self.robot_id, jointIndex=id, targetValue=jp)
         #for _ in range(240): self.p.stepSimulation() # let the object stabilize
         return np.maximum(np.minimum(self.get_obs(),1),-1)
         
@@ -370,10 +386,12 @@ class RobotGrasping(gym.Env):
         for i, state, u, l, v in zip(range(self.n_joints), jointStates, self.upperLimits, self.lowerLimits, self.maxVelocity):
             pos[i] = 2*(state[0]-u)/(u-l) + 1 # set between -1 and 1
             vel[i] = state[1]/v # set between -1 and 1
-            self.info['joint positions'][i], self.info['joint velocities'][i], _, self.info['applied joint motor torques'][i] = state
+            self.info['joint positions'][i], self.info['joint velocities'][i], jointReactionForces, self.info['applied joint motor torques'][i] = state
+            self.info['joint reaction forces'][i] = jointReactionForces[-1] # get Mz
         absolute_center = p.multiplyTransforms(*self.p.getBasePositionAndOrientation(self.robot_id), *self.center_workspace) # the pose of center_workspace in the world
         obj_pos, obj_or = self.p.multiplyTransforms(*self.p.invertTransform(*absolute_center), *obj_pose) # the object pose in the center_workspace frame
-        observation = np.hstack([np.array(obj_pos)/self.radius, obj_or, *obj_vel, pos, vel])
+        obj_or = self.p.getMatrixFromQuaternion(obj_or)[:6] # taking 6 parameters from the rotation matrix let the rotation be described in a continuous representation, which is better for neural networks
+        observation = np.hstack([np.array(obj_pos)/self.radius, obj_or, *obj_vel, pos, vel, self.info['joint reaction forces']/self.maxForce])#, self.last_action])
         return observation #np.maximum(np.minimum(obs,1),-1)
 
             
@@ -403,3 +421,4 @@ class RobotGrasping(gym.Env):
         """ Return normalized joint positions+gripper state open(-1)/close(1) and the end effector state """
         positions = [2*(s[0]-u)/(u-l) + 1 for s,u,l in zip(self.p.getJointStates(self.robot_id, self.joint_ids[:-self.n_control_gripper]), self.upperLimits, self.lowerLimits)]
         return positions+[self.gripper], self.p.getLinkState(self.robot_id, self.end_effector_id)
+        
