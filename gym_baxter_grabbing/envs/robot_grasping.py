@@ -273,7 +273,7 @@ class RobotGrasping(gym.Env):
         """
         for i in range(1000): # try to generate a random configuration of the robot
             for id, u, l in zip(self.joint_ids, self.upperLimits, self.lowerLimits):
-                self.p.resetJointState(self.robot_id, id, targetValue=l+(self.rng.random()+1)/2*(u-l))
+                self.p.resetJointState(self.robot_id, id, targetValue=l+self.rng.random()*(u-l))
             if self.table_id is not None and len(self.p.getContactPoints(bodyA=self.robot_id,bodyB=self.table_id))>0:
                 continue # repeat, there is a collision with the table
             for c in self.p.getContactPoints(bodyA=self.robot_id,bodyB=self.robot_id):
