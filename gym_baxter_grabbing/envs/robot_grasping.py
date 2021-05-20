@@ -8,8 +8,13 @@ import weakref
 import functools
 import inspect
 import numpy as np
-import numpy.typing as npt
+
 from typing import Dict, List, Tuple, Sequence, Callable, Any, Union, Optional
+try:
+    import numpy.typing as npt
+    ArrayLike = npt.ArrayLike
+except:
+    ArrayLike = Any
 
 class BulletClient(object):
   """A wrapper for pybullet to manage different clients. copy-pasted from https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_utils/bullet_client.py"""
@@ -47,30 +52,30 @@ class RobotGrasping(gym.Env):
         robot: Callable[[], int], # function to load the robot, returning the id
         display: bool = False, # enable/disable display
         obj: str = 'cube', # object to load, available objects are those defined in get_object and in the folder gym-baxter-grabbing/gym_baxter_grabbing/envs/objects/
-        pos_cam: npt.ArrayLike = [1.3, 180, -40], # initial positon of the camera
+        pos_cam: ArrayLike = [1.3, 180, -40], # initial positon of the camera
         gripper_display: bool = False, # display the ripper frame
         steps_to_roll: int = 1, # nb time to call p.stepSimulation within one step
         random_var: Optional[float] = 0, # the variance of the positon noise of the object
-        delta_pos: npt.ArrayLike = [0, 0], # position displacement of the object, it won't be reseted with reset()
-        object_position: npt.ArrayLike = [0., 0., 0.], # initial position of the object during loading, then it will fall
-        object_xyzw: npt.ArrayLike = [0,0,0,1], # initial orientation of the object during loading
-        joint_positions: Optional[npt.ArrayLike] = None, # initial joint positions
+        delta_pos: ArrayLike = [0, 0], # position displacement of the object, it won't be reseted with reset()
+        object_position: ArrayLike = [0., 0., 0.], # initial position of the object during loading, then it will fall
+        object_xyzw: ArrayLike = [0,0,0,1], # initial orientation of the object during loading
+        joint_positions: Optional[ArrayLike] = None, # initial joint positions
         # True: each time reset() is called, the object has a random initial position
         # False: the object has a random initial position but reset() won't randomize the position
         # None: there is no random position applied at any stage
         reset_random_initial_state: Optional[bool] = None, # if not None, it overwrites object_position and object_xyzw
-        initial_state: Optional[Dict[str, npt.ArrayLike]] = None, # set the initial state, it must be the output of get_state()
+        initial_state: Optional[Dict[str, ArrayLike]] = None, # set the initial state, it must be the output of get_state()
         table_height: Optional[float] = 0.7, # the height of the table
         mode: str = 'joint positions', # the control mode, either 'joint positions', 'joint velocities', 'joint torques', 'inverse kinematic'
         end_effector_id: int = -1, # link id of the end effector
-        joint_ids: Optional[npt.ArrayLike] = None, # array of int, ids of joints to control
+        joint_ids: Optional[ArrayLike] = None, # array of int, ids of joints to control
         n_control_gripper: int = 1, # number of controllable joints belonging to the gripper
         n_actions: int = 1, # nb of dimensions of the action space
-        center_workspace: Union[int, npt.ArrayLike] = -1, # position of the center of the sphere, supposing the workspace is a sphere (robotic arm) and the robot is not moving, if int, the position of the robot link is used
+        center_workspace: Union[int, ArrayLike] = -1, # position of the center of the sphere, supposing the workspace is a sphere (robotic arm) and the robot is not moving, if int, the position of the robot link is used
         radius: float = 1, # radius of the workspace
-        contact_ids: npt.ArrayLike = [], # link id (int) of the robot gripper that can have a grasping contact
-        disable_collision_pair: npt.ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) to disable collision with setCollisionFilterPair
-        allowed_collision_pair: npt.ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) allowed in autocollision
+        contact_ids: ArrayLike = [], # link id (int) of the robot gripper that can have a grasping contact
+        disable_collision_pair: ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) to disable collision with setCollisionFilterPair
+        allowed_collision_pair: ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) allowed in autocollision
         change_dynamics: Dict[int, Dict[str, Any]] = {} # the key is the robot link id, the value is the args passed to p.changeDynamics
     ):
         weakref.finalize(self, self.close) # cleanup
@@ -125,7 +130,6 @@ class RobotGrasping(gym.Env):
         for i, id in enumerate(self.joint_ids):
             self.lowerLimits[i], self.upperLimits[i], self.maxForce[i], self.maxVelocity[i] = self.p.getJointInfo(self.robot_id, id)[8:12]
             self.p.enableJointForceTorqueSensor(self.robot_id, id)
-            #self.p.changeDynamics(self.robot_id, linkIndex=id, jointLowerLimit=self.lowerLimits[i], jointUpperLimit=self.upperLimits[i])
         
         for id, args in change_dynamics.items(): # change dynamics
             self.p.changeDynamics(self.robot_id, linkIndex=id, **args)
@@ -202,7 +206,7 @@ class RobotGrasping(gym.Env):
         self.step = newstep
 
 
-    def step(self, action: Optional[npt.ArrayLike]=None) -> Tuple[npt.ArrayLike, bool, bool, Dict[str, Any]]: # actions are in [-1,1]
+    def step(self, action: Optional[ArrayLike]=None) -> Tuple[ArrayLike, bool, bool, Dict[str, Any]]: # actions are in [-1,1]
         la = len(action)
         if self.mode in {'joint positions', 'inverse kinematic'} and action is not None:
             for id, a, v, f, u, l in zip(self.joint_ids, action, self.maxVelocity, self.maxForce, self.upperLimits, self.lowerLimits):
@@ -259,13 +263,13 @@ class RobotGrasping(gym.Env):
         """ return a dict containing informations of the primitive shape or a str (urdf file) """
         return obj
         
-    def get_state(self) -> Dict[str, npt.ArrayLike]:
+    def get_state(self) -> Dict[str, ArrayLike]:
         """ return unnormalized object pose and joint positions. The returned dict can be passed to initialize another environment."""
         pos, qua = self.p.getBasePositionAndOrientation(self.obj_id)
         joint_positions = [s[0] for s in self.p.getJointStates(self.robot_id, self.joint_ids)]
         return {'object_position':pos, 'object_xyzw':qua, 'joint_positions': joint_positions}
         
-    def reset_random_state(self) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
+    def reset_random_state(self) -> Tuple[ArrayLike, ArrayLike]:
         """
         Put the robot in a random configuration
         generate a random position of the object on the table, supposing the center_workspace is above the table (the robot can reach with the straight arm) and the robot is not too far from the table!
@@ -274,6 +278,7 @@ class RobotGrasping(gym.Env):
         for i in range(1000): # try to generate a random configuration of the robot
             for id, u, l in zip(self.joint_ids, self.upperLimits, self.lowerLimits):
                 self.p.resetJointState(self.robot_id, id, targetValue=l+self.rng.random()*(u-l))
+            self.p.performCollisionDetection()
             if self.table_id is not None and len(self.p.getContactPoints(bodyA=self.robot_id,bodyB=self.table_id))>0:
                 continue # repeat, there is a collision with the table
             for c in self.p.getContactPoints(bodyA=self.robot_id,bodyB=self.robot_id):
@@ -303,7 +308,7 @@ class RobotGrasping(gym.Env):
         raise Exception('Failed 1000 times to generate a random position of the object, the robot is too far from the table or the radius is not well tuned')
         
         
-    def load_object(self, obj:Optional[str] = None, delta_pos: npt.ArrayLike = [0,0]):
+    def load_object(self, obj:Optional[str] = None, delta_pos: ArrayLike = [0,0]):
         pos = np.array(self.object_position)
         pos[:2] += delta_pos
         if self.random_var:
@@ -347,7 +352,7 @@ class RobotGrasping(gym.Env):
         aabbMin, aabbMax = self.p.getAABB(self.obj_id)
         self.obj_length = np.linalg.norm(np.array(aabbMax)- np.array(aabbMin)).item() # approximate maximum length of the object
 
-    def reset(self, delta_pos: npt.ArrayLike = [0,0], yaw: float = 0, object_position=None, object_xyzw=None, joint_positions=None):
+    def reset(self, delta_pos: ArrayLike = [0,0], yaw: float = 0, object_position=None, object_xyzw=None, joint_positions=None):
         """
         delta_pos and self.delta_pos are relative to the initial position (during init)
         object_position, object_xyzw, joint_positions are absolute, they overwrite everything
@@ -374,7 +379,7 @@ class RobotGrasping(gym.Env):
         #for _ in range(240): self.p.stepSimulation() # let the object stabilize
         return np.maximum(np.minimum(self.get_obs(),1),-1)
         
-    def get_obs(self) -> npt.ArrayLike:
+    def get_obs(self) -> ArrayLike:
         obj_pose = self.p.getBasePositionAndOrientation(self.obj_id)
         # we do not normalize the velocity, supposing the object is not moving that fast
         # we do not express the velocity in the robot frame, supoosing the robot is not moving
@@ -383,8 +388,7 @@ class RobotGrasping(gym.Env):
         self.info['object linear velocity'], self.info['object angular velocity'] = obj_vel
         jointStates = self.p.getJointStates(self.robot_id, self.joint_ids)
         pos, vel = [0]*self.n_joints, [0]*self.n_joints
-        for i, u, l, v, id in zip(range(self.n_joints), self.upperLimits, self.lowerLimits, self.maxVelocity, self.joint_ids):
-            state = self.p.getJointState(self.robot_id, id)
+        for i, state, u, l, v in zip(range(self.n_joints), jointStates, self.upperLimits, self.lowerLimits, self.maxVelocity):
             pos[i] = 2*(state[0]-u)/(u-l) + 1 # set between -1 and 1
             vel[i] = state[1]/v # set between -1 and 1
             self.info['joint positions'][i], self.info['joint velocities'][i], jointReactionForces, self.info['applied joint motor torques'][i] = state
