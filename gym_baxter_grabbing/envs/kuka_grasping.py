@@ -53,7 +53,6 @@ class KukaGrasping(RobotGrasping):
             n_control_gripper=4,
             mode = mode,
             end_effector_id = 6,
-            n_actions = 8,
             center_workspace = 0,
             radius = 1.2,
             #disable_collision_pair = [[11,13]],

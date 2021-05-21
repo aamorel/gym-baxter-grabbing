@@ -68,7 +68,7 @@ class RobotGrasping(gym.Env):
         table_height: Optional[float] = 0.7, # the height of the table
         mode: str = 'joint positions', # the control mode, either 'joint positions', 'joint velocities', 'joint torques', 'inverse kinematic'
         end_effector_id: int = -1, # link id of the end effector
-        joint_ids: Optional[ArrayLike] = None, # array of int, ids of joints to control
+        joint_ids: Optional[ArrayLike] = None, # array of int, ids of joints to control, controlable joints of the gripper must be at the end
         n_control_gripper: int = 1, # number of controllable joints belonging to the gripper
         n_actions: int = 1, # nb of dimensions of the action space
         center_workspace: Union[int, ArrayLike] = -1, # position of the center of the sphere, supposing the workspace is a sphere (robotic arm) and the robot is not moving, if int, the position of the robot link is used
@@ -78,6 +78,7 @@ class RobotGrasping(gym.Env):
         allowed_collision_pair: ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) allowed in autocollision
         change_dynamics: Dict[int, Dict[str, Any]] = {} # the key is the robot link id, the value is the args passed to p.changeDynamics
     ):
+        assert mode in {'joint positions', 'joint velocities', 'joint torques', 'end effector'}, "mode must be either joint positions, joint velocities, joint torques, end effector"
         weakref.finalize(self, self.close) # cleanup
         self.obj = obj.strip()
         self.object_position = object_position
@@ -97,7 +98,7 @@ class RobotGrasping(gym.Env):
         self.end_effector_id = end_effector_id
         self.n_control_gripper = n_control_gripper
         self.mode = mode
-        self.n_actions = n_actions
+        self.n_actions = len(joint_ids) - n_control_gripper + 1
         self.radius = radius
         self.contact_ids = contact_ids
         self.allowed_collision_pair = [set(c) for c in allowed_collision_pair]
@@ -201,7 +202,7 @@ class RobotGrasping(gym.Env):
             self.gripper = action[-1]
             self.info['closed gripper'] = action[-1]<0
             out = oldstep(action)
-            self.last_action = np.array(action)
+            self.last_action[:] = action
             return out
         self.step = newstep
 
@@ -352,14 +353,14 @@ class RobotGrasping(gym.Env):
         aabbMin, aabbMax = self.p.getAABB(self.obj_id)
         self.obj_length = np.linalg.norm(np.array(aabbMax)- np.array(aabbMin)).item() # approximate maximum length of the object
 
-    def reset(self, delta_pos: ArrayLike = [0,0], yaw: float = 0, object_position=None, object_xyzw=None, joint_positions=None):
+    def reset(self, delta_pos: ArrayLike = [0,0], delta_yaw: float = 0, multiply_lateral_friction:float=1, object_position=None, object_xyzw=None, joint_positions=None):
         """
         delta_pos and self.delta_pos are relative to the initial position (during init)
         object_position, object_xyzw, joint_positions are absolute, they overwrite everything
         """
         assert not self.has_reset_object, "you can not remove/change the object and restore a state: use either reset() or reset_object(), not both"
         self.p.restoreState(self.save_state)
-        if (not np.any(delta_pos)) and yaw==0 and (not self.reset_random_initial_state) and (not self.random_var) and object_position is None and object_xyzw is None and joint_positions is None:
+        if (not np.any(delta_pos)) and delta_yaw==0 and multiply_lateral_friction==1 and (not self.reset_random_initial_state) and (not self.random_var) and object_position is None and object_xyzw is None and joint_positions is None:
             return self.get_obs() # do not need to change the position
         elif self.reset_random_initial_state:
             self.reset_random_state()
@@ -369,13 +370,14 @@ class RobotGrasping(gym.Env):
         if self.random_var:
             pos[0] += random.gauss(0, self.random_var)
             pos[1] += random.gauss(0, self.random_var)
-        _, qua = self.p.multiplyTransforms([0,0,0], [0, 0, np.sin(yaw/2), np.cos(yaw/2)], [0,0,0], qua) # apply yaw rotation
+        _, qua = self.p.multiplyTransforms([0,0,0], [0, 0, np.sin(delta_yaw/2), np.cos(delta_yaw/2)], [0,0,0], qua) # apply delta_yaw rotation
         pos = object_position or pos # overwrite if absolute position is given
         qua = object_xyzw or qua
         joint_pos = joint_positions or [s[0] for s in self.p.getJointStates(self.robot_id, self.joint_ids)]
         self.p.resetBasePositionAndOrientation(self.obj_id, pos, qua)
-        for id, jp in zip(self.joint_ids, joint_pos):
+        for id, jp in zip(self.joint_ids, joint_pos): # reset the robot
             self.p.resetJointState(self.robot_id, jointIndex=id, targetValue=jp)
+        self.p.changeDynamics(self.obj_id, -1, lateralFriction=multiply_lateral_friction*self.p.getDynamicsInfo(self.obj_id, -1)[4]) # set the object friction
         #for _ in range(240): self.p.stepSimulation() # let the object stabilize
         return np.maximum(np.minimum(self.get_obs(),1),-1)
         
@@ -393,6 +395,8 @@ class RobotGrasping(gym.Env):
             vel[i] = state[1]/v # set between -1 and 1
             self.info['joint positions'][i], self.info['joint velocities'][i], jointReactionForces, self.info['applied joint motor torques'][i] = state
             self.info['joint reaction forces'][i] = jointReactionForces[-1] # get Mz
+        if self.mode == 'joint torques': # getJointState does not report the applied torques if using torque control
+            self.info['applied joint motor torques'][:-self.n_control_gripper] = self.last_action[:-1]*self.maxForce[:-self.n_control_gripper]
         absolute_center = p.multiplyTransforms(*self.p.getBasePositionAndOrientation(self.robot_id), *self.center_workspace) # the pose of center_workspace in the world
         obj_pos, obj_or = self.p.multiplyTransforms(*self.p.invertTransform(*absolute_center), *obj_pose) # the object pose in the center_workspace frame
         obj_or = self.p.getMatrixFromQuaternion(obj_or)[:6] # taking 6 parameters from the rotation matrix let the rotation be described in a continuous representation, which is better for neural networks

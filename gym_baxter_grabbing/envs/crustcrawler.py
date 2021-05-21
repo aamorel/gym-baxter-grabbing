@@ -54,7 +54,6 @@ class CrustCrawler(RobotGrasping):
             mode=mode,
             end_effector_id=15,
             n_control_gripper=2,
-            n_actions=7,
             center_workspace=0,
             radius=0.65,
             contact_ids=[12, 13, 14],

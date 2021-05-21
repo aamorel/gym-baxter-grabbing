@@ -46,7 +46,7 @@ class BaxterGrasping(RobotGrasping):
         reset_random_initial_state=None,
         object_position=[0, 0.12, 0],
         object_xyzw=[0,0,0,1],
-        joint_positions=None
+        joint_positions=None,
     ):
         
             
@@ -105,7 +105,6 @@ class BaxterGrasping(RobotGrasping):
             end_effector_id = 48,
             joint_ids = [34, 35, 36, 37, 38, 40, 41, 49, 51],
             n_control_gripper=2,
-            n_actions = 8,
             center_workspace = 34,
             radius = 1.2,
             contact_ids=[47, 48, 49, 50, 51, 52],
@@ -149,20 +148,20 @@ class BaxterGrasping(RobotGrasping):
 
             
 
-        if self.mode == 'joint positions':
+        elif self.mode == 'joint positions':
             # we want one action per joint (gripper is composed by 2 joints but considered as one)
             
             self.info['closed gripper'] = action[-1]<0
             
             commands = np.append(action, -action[-1]) # add the command for the last gripper joint
 
-        if self.mode == 'joint torques':
+        elif self.mode == 'joint torques':
             # joint are controled with torque except the griper which is binary: opened/closed
             target_gripper_pos = (action[-1] + 1) * 0.010416
             self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=49, controlMode=self.p.POSITION_CONTROL, targetPosition=target_gripper_pos, force=self.maxForce[-2], maxVelocity=self.maxVelocity[-2])
             self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=51, controlMode=self.p.POSITION_CONTROL, targetPosition=-target_gripper_pos, force=self.maxForce[-1], maxVelocity=self.maxVelocity[-1])
             commands = action[:-1] # send commands without the gripper
-
+        
         return super().step(commands)
 
 
