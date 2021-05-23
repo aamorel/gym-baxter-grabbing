@@ -377,7 +377,7 @@ class RobotGrasping(gym.Env):
         self.p.resetBasePositionAndOrientation(self.obj_id, pos, qua)
         for id, jp in zip(self.joint_ids, joint_pos): # reset the robot
             self.p.resetJointState(self.robot_id, jointIndex=id, targetValue=jp)
-        self.p.changeDynamics(self.obj_id, -1, lateralFriction=multiply_lateral_friction*self.p.getDynamicsInfo(self.obj_id, -1)[2]) # set the object friction
+        self.p.changeDynamics(self.obj_id, -1, lateralFriction=multiply_lateral_friction*self.p.getDynamicsInfo(self.obj_id, -1)[1]) # set the object friction
         #for _ in range(240): self.p.stepSimulation() # let the object stabilize
         return np.maximum(np.minimum(self.get_obs(),1),-1)
         
