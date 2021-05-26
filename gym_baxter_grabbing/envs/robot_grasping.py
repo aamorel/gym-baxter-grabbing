@@ -43,6 +43,7 @@ class BulletClient(object):
 
 
 class RobotGrasping(gym.Env):
+    metadata = {'render.modes': ['human', 'rgb_array']}
 
     def __init_subclass__(cls, *args, **kwargs): # callback trick
         super().__init_subclass__(*args, **kwargs)
@@ -76,7 +77,8 @@ class RobotGrasping(gym.Env):
         contact_ids: ArrayLike = [], # link id (int) of the robot gripper that can have a grasping contact
         disable_collision_pair: ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) to disable collision with setCollisionFilterPair
         allowed_collision_pair: ArrayLike = [], # 2D array (-1,2), list of pair of link id (int) allowed in autocollision
-        change_dynamics: Dict[int, Dict[str, Any]] = {} # the key is the robot link id, the value is the args passed to p.changeDynamics
+        change_dynamics: Dict[int, Dict[str, Any]] = {}, # the key is the robot link id, the value is the args passed to p.changeDynamics
+        early_stopping: bool = False, # stop prematurely the episode (done=True) if a joint (excluding gripper joints) reaches a position limit in torque mode, this will disable changeDynamics
     ):
         assert mode in {'joint positions', 'joint velocities', 'joint torques', 'end effector'}, "mode must be either joint positions, joint velocities, joint torques, end effector"
         weakref.finalize(self, self.close) # cleanup
@@ -102,6 +104,7 @@ class RobotGrasping(gym.Env):
         self.radius = radius
         self.contact_ids = contact_ids
         self.allowed_collision_pair = [set(c) for c in allowed_collision_pair]
+        self.early_stopping = early_stopping
         self.rng = np.random.default_rng()
 
         self.p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -133,7 +136,8 @@ class RobotGrasping(gym.Env):
             self.p.enableJointForceTorqueSensor(self.robot_id, id)
         
         for id, args in change_dynamics.items(): # change dynamics
-            self.p.changeDynamics(self.robot_id, linkIndex=id, **args)
+            if id in self.joint_ids[-self.n_control_gripper:] or self.mode!='joint torques':#not self.early_stopping:
+                self.p.changeDynamics(self.robot_id, linkIndex=id, **args) # dynamics are not changed (high speed allowed) if early_stopping, except for gripper joints
             if id in self.joint_ids: # update limits if needed
                 index = np.nonzero(self.joint_ids==id)[0][0]
                 if 'jointLowerLimit' in args and 'jointUpperLimit' in args:
@@ -176,15 +180,15 @@ class RobotGrasping(gym.Env):
             self.reset_random_state()
         
         if self.mode == 'joint torques': # disable motors to use torque control, with a small joint friction
-            for id in self.joint_ids:
+            for id in self.joint_ids[:-self.n_control_gripper]:
                 self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=self.p.VELOCITY_CONTROL, force=1e-3)
         
         
         self.save_state = self.p.saveState()
         self.action_space = gym.spaces.Box(-1., 1., shape=(self.n_actions,), dtype='float32')
         self.observation_space = gym.spaces.Box(-1., 1., shape=(15+len(self.joint_ids)*3,), dtype='float32') # TODO: add image if asked
-        #high = np.array([np.inf, np.inf, np.inf, 1, 1, 1, 1, 1, 1, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, *[1 for i in self.joint_ids], *[np.inf for i in self.joint_ids]])
-        #self.observation_space = gym.spaces.Box(-high, high, dtype='float32')
+        high = np.array([1,1,1, 1, 1, 1, 1, 1, 1, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, *[1 for i in self.joint_ids], *[np.inf for i in self.joint_ids], *[1 for i in self.joint_ids]])
+        self.observation_space = gym.spaces.Box(-high, high, dtype='float32')
         self.info = {
             'closed gripper': False,
             'contact object table': [],
@@ -256,9 +260,19 @@ class RobotGrasping(gym.Env):
 
         
         reward = len(self.info['contact object table'] + self.info['contact object plane'])==0 and self.info['touch'] and not penetration
-        done = False
+        observation = self.get_obs()
+        
+        is_out = np.logical_or(self.info['joint positions']<=self.lowerLimits, self.info['joint positions']>=self.upperLimits)
+        done = False#np.all(is_out[:-self.n_control_gripper]).item() if self.early_stopping else False
+        #if done:
+            #print(self.info['joint positions'], self.lowerLimits, self.upperLimits, is_out)
+        
+        # add infos for stable-baselines
+        self.info['is_success'] = reward
+        self.info['terminal_observation'] = observation
+        
         # observations are normalized, thus it is not mean to be handled by humans, check info for human readable datas
-        return self.get_obs(), reward, done, self.info
+        return observation, reward, done, self.info
     
     def get_object(self, obj: Optional[str]=None):
         """ return a dict containing informations of the primitive shape or a str (urdf file) """
@@ -419,7 +433,13 @@ class RobotGrasping(gym.Env):
             
 
     def render(self, mode='human'):
-        pass
+        if mode == 'rgb_array': # slow !
+            img = np.array(self.p.getCameraImage(width=320, height=200, renderer=self.p.ER_BULLET_HARDWARE_OPENGL if self.display else self.p.ER_TINY_RENDERER)[2], dtype=np.uint8)
+            return img.reshape(200,320,4)[:,:,:3] # return RGB frame suitable for video, discard alpha channel
+        elif mode == 'human':
+            pass
+        else:
+            super().render(mode=mode) # just raise an exception
 
     def close(self):
         if self.physicsClientId >=0:

@@ -23,7 +23,8 @@ class KukaGrasping(RobotGrasping):
         reset_random_initial_state=None,
         object_position=[0, 0.1, 0],
         object_xyzw=[0,0,0,1],
-        joint_positions=None
+        joint_positions=None,
+        early_stopping=False,
 	):
         
         self.obstacle_pos = None if obstacle_pos is None else np.array(obstacle_pos)
@@ -56,13 +57,14 @@ class KukaGrasping(RobotGrasping):
             center_workspace = 0,
             radius = 1.2,
             #disable_collision_pair = [[11,13]],
-            change_dynamics = {**{ # change joints ranges for gripper
+            change_dynamics = {**{ # change joints ranges for gripper and add jointLimitForce and maxJointVelocity, the default are 0 in the sdf and this produces very weird behaviours
                 id:{'lateralFriction':1, 'jointLowerLimit':l, 'jointUpperLimit':h, 'maxJointVelocity':1, 'jointLimitForce':10, 'jointDamping':0.5} for id,l,h in [
                     (8, -0.5, -0.05), # b'base_left_finger_joint
                     (11, 0.05, 0.5), # b'base_right_finger_joint
                     (10, -0.3, 0.1), # b'left_base_tip_joint
                     (13, -0.1, 0.3)] # b'right_base_tip_joint
-            }, **{i:{'maxJointVelocity':0.5, 'jointLimitForce':100 if i==1 else 50} for i in range(7)}} # decrease max force & velocity
+            }, **{i:{'maxJointVelocity':0.5, 'jointLimitForce':100 if i==1 else 50} for i in range(7)}}, # decrease max force & velocity
+            early_stopping=early_stopping,
         )
         if self.obstacle_pos is not None:
             # create the obstacle object at the required location
@@ -105,7 +107,7 @@ class KukaGrasping(RobotGrasping):
             # control the gripper in positions
             for id, a, v, f, u, l in zip(self.joint_ids[-4:], fingers, self.maxVelocity[-4:], self.maxForce[-4:], self.upperLimits[-4:], self.lowerLimits[-4:]):
                 self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=self.p.POSITION_CONTROL, targetPosition=l+(a+1)/2*(u-l), maxVelocity=v, force=f)
-            commands = action[:-1]
+            commands = action[:-1] #; print(commands)
 
         # apply the commands
         return super().step(commands)
