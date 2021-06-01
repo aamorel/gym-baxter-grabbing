@@ -12,19 +12,10 @@ from gym_baxter_grabbing.envs.robot_grasping import RobotGrasping
 class KukaGrasping(RobotGrasping):
 
     def __init__(self,
-        display=False,
-        obj='cube',
-        steps_to_roll=1,
-        random_var=None,
-        mode='joint positions',
-        delta_pos=[0, 0],
         obstacle_pos=None,
         obstacle_size=0.1,
-        reset_random_initial_state=None,
         object_position=[0, 0.1, 0],
-        object_xyzw=[0,0,0,1],
-        joint_positions=None,
-        early_stopping=False,
+        **kwargs
 	):
         
         self.obstacle_pos = None if obstacle_pos is None else np.array(obstacle_pos)
@@ -37,34 +28,23 @@ class KukaGrasping(RobotGrasping):
 
         super().__init__(
             robot=load_kuka,
-            display=display,
-            obj=obj,
-            pos_cam=[1.3, 180, -40],
-            gripper_display=True,
-            steps_to_roll=steps_to_roll,
-            random_var=random_var,
-            delta_pos=delta_pos,
-            reset_random_initial_state=reset_random_initial_state,
             object_position=object_position,
-            object_xyzw=object_xyzw,
-            joint_positions=joint_positions,
             table_height=0.8,
             joint_ids=[0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 13],
             contact_ids=[8, 9, 10, 11, 12, 13],
             n_control_gripper=4,
-            mode = mode,
             end_effector_id = 6,
             center_workspace = 0,
             radius = 1.2,
             #disable_collision_pair = [[11,13]],
             change_dynamics = {**{ # change joints ranges for gripper and add jointLimitForce and maxJointVelocity, the default are 0 in the sdf and this produces very weird behaviours
-                id:{'lateralFriction':1, 'jointLowerLimit':l, 'jointUpperLimit':h, 'maxJointVelocity':1, 'jointLimitForce':10, 'jointDamping':0.5} for id,l,h in [
+                id:{'lateralFriction':1, 'jointLowerLimit':l, 'jointUpperLimit':h, 'jointLimitForce':10, 'jointDamping':0.5} for id,l,h in [ # , 'maxJointVelocity':1
                     (8, -0.5, -0.05), # b'base_left_finger_joint
                     (11, 0.05, 0.5), # b'base_right_finger_joint
                     (10, -0.3, 0.1), # b'left_base_tip_joint
                     (13, -0.1, 0.3)] # b'right_base_tip_joint
             }, **{i:{'maxJointVelocity':0.5, 'jointLimitForce':100 if i==1 else 50} for i in range(7)}}, # decrease max force & velocity
-            early_stopping=early_stopping,
+            **kwargs,
         )
         if self.obstacle_pos is not None:
             # create the obstacle object at the required location

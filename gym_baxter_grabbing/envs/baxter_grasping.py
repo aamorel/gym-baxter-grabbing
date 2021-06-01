@@ -32,21 +32,15 @@ def accurateIK(bodyId, end_effector_id, targetPosition, targetOrientation, lower
 class BaxterGrasping(RobotGrasping):
 
     def __init__(self,
-        display=False,
-        obj='cube',
-        delta_pos=[0, 0],
-        steps_to_roll=1,
-        mode='joint positions',
-        random_var=None,
+        obj="sphere",
         finger="extended_narrow",
         slot=3,
         tip="basic_soft",
         grasp="inner",
         limit_scale=0.13,
-        reset_random_initial_state=None,
         object_position=[0, 0.12, 0],
-        object_xyzw=[0,0,0,1],
         joint_positions=None,
+        **kwargs
     ):
         
             
@@ -89,19 +83,9 @@ class BaxterGrasping(RobotGrasping):
         
         super().__init__(
             robot=baxter,
-            display=display,
             obj=obj,
-            pos_cam=[1.2, 180, -40],
-            gripper_display=False,
-            steps_to_roll=steps_to_roll,
-            random_var=random_var,
-            delta_pos=delta_pos,
             object_position=object_position,
-            object_xyzw = object_xyzw,
-            joint_positions=joint_positions,
-            reset_random_initial_state=reset_random_initial_state,
             table_height=0.76,
-            mode = mode,
             end_effector_id = 48,
             joint_ids = [34, 35, 36, 37, 38, 40, 41, 49, 51],
             n_control_gripper=2,
@@ -109,7 +93,8 @@ class BaxterGrasping(RobotGrasping):
             radius = 1.2,
             contact_ids=[47, 48, 49, 50, 51, 52],
             disable_collision_pair = [[49, 51], [38, 53], [27, 29], [16, 31], [1, 10], [1, 7], [1, 5], [0, 10], [0, 7], [0, 5], [0, 1], [40, 53], [37, 54], [34, 36], [18, 31], [15, 32], [12, 14], [35, 2], [34, 2], [14, 2], [13, 2], [12, 2], [2, 7], [1, 2], [0, 2], [41, 53], [36, 2], [34, 54], [54, 2], [50, 55], [38, 54], [1, 53], [1, 38], [1, 37], [16, 32], [19,31], [49,52], [50,51], [50,52]],
-            change_dynamics = {i:{'collisionMargin':0.04} for i in (25, 26, 27, 29, 47, 48, 49, 51)} | {i:{'collisionMargin':0.04, 'lateralFriction':1} for i in (28, 30, 50, 52)}
+            change_dynamics = {**{i:{'lateralFriction':1} for i in (28, 30, 50, 52)}, **{i:{'jointLimitForce':100} for i in (49,51)}},
+            **kwargs
         )
 
 

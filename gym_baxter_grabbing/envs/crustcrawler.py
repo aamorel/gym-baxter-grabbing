@@ -13,18 +13,9 @@ from gym_baxter_grabbing.envs.xacro import _process
 class CrustCrawler(RobotGrasping):
 
     def __init__(self,
-        display=False,
-        obj='cube',
-        random_obj=False,
-        delta_pos=[0, 0],
-        steps_to_roll=1,
-        mode='joint positions',
-        random_var=0,
         limit_scale=0.3,
-        reset_random_initial_state=None,
         object_position=[0, 0.4, 0],
-        object_xyzw=[0,0,0,1],
-        joint_positions=None
+        **kwargs
     ):
         
         if (not (isinstance(limit_scale, int) or isinstance(limit_scale, float))) or limit_scale<0:
@@ -39,19 +30,8 @@ class CrustCrawler(RobotGrasping):
         h = 0.76
         super().__init__(
             robot=lambda : self.p.loadURDF(str(urdf), basePosition=[0, 0, h-1+1e-3], baseOrientation=[0,0,-1,-1], useFixedBase=False, flags=self.p.URDF_USE_SELF_COLLISION),
-            display=display,
-            obj=obj,
-            pos_cam=[1.2, 180, -40],
-            gripper_display=False,
-            steps_to_roll=steps_to_roll,
-            random_var=random_var,
-            delta_pos=delta_pos,
-            reset_random_initial_state=reset_random_initial_object_pose,
             object_position=object_position,
-            object_xyzw=object_xyzw,
-            joint_positions=joint_positions,
             table_height=h,
-            mode=mode,
             end_effector_id=15,
             n_control_gripper=2,
             center_workspace=0,
@@ -59,7 +39,8 @@ class CrustCrawler(RobotGrasping):
             contact_ids=[12, 13, 14],
             disable_collision_pair=[[11,14], [11,13]],
             allowed_collision_pair=[[13,14]], # allow the two fingers to collide
-            change_dynamics = {i:{'lateralFriction':1} for i in (13, 14)}
+            change_dynamics = {i:{'lateralFriction':1} for i in (13, 14)},
+            **kwargs
         )
 
         
