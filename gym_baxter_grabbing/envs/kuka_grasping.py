@@ -83,11 +83,14 @@ class KukaGrasping(RobotGrasping):
             commands = np.hstack([action[:-1], *fingers])
         elif self.mode == 'inverse kinematic':
             pass
-        elif self.mode == 'joint torques':
+        elif self.mode in {'joint torques', 'inverse dynamics'}:
             # control the gripper in positions
             for id, a, v, f, u, l in zip(self.joint_ids[-4:], fingers, self.maxVelocity[-4:], self.maxForce[-4:], self.upperLimits[-4:], self.lowerLimits[-4:]):
                 self.p.setJointMotorControl2(bodyIndex=self.robot_id, jointIndex=id, controlMode=self.p.POSITION_CONTROL, targetPosition=l+(a+1)/2*(u-l), maxVelocity=v, force=f)
-            commands = action[:-1] #; print(commands)
+            if self.mode == 'joint torques':
+                commands = action[:-1]
+            elif self.mode == 'inverse dynamics':
+                commands = np.hstack((action[:-1], (0,0,0,0)))# ; commands= [0,0,10,0,0,0,0, 0,0,0,0]
 
         # apply the commands
         return super().step(commands)
